@@ -1,11 +1,64 @@
 <!DOCTYPE html>
 <html lang="en" data-theme="dark">
-<head><meta charset="UTF-8"><meta name="viewport" content="width=device-width, initial-scale=1"><meta name="theme-color" content="#0d0f12"><title>House of Jacob — Community</title><link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}"><script defer src="{{ url_for('static', filename='site.js') }}"></script></head>
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<meta name="theme-color" content="#0d0f12">
+<meta name="description" content="House of Jacob — a welcoming community to share stories, discover connections, and stay in touch.">
+<title>House of Jacob — Community</title>
+<link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}">
+<script defer src="{{ url_for('static', filename='site.js') }}"></script>
+</head>
 <body>
-<header class="topbar"><a class="brand" href="{{ url_for('index') }}"><span class="crown">♛</span><span>HOUSE OF JACOB<small>Connection • Community • Belonging</small></span></a><nav class="nav"><button class="theme-toggle" data-theme-toggle type="button" aria-label="Toggle color theme">☀ Light mode</button>{% if user %}<a class="btn btn-primary" href="{{ url_for('dashboard') }}">My community</a>{% else %}<a class="btn btn-quiet" href="{{ url_for('login') }}">Sign in</a><a class="btn btn-primary" href="{{ url_for('register') }}">Join the community</a>{% endif %}</nav></header>
-<main>
+<header class="topbar">
+  <a class="brand" href="{{ url_for('index') }}"><span class="crown">♛</span><span>HOUSE OF JACOB<small>Connection • Community • Belonging</small></span></a>
+  <nav class="nav">
+    <a class="nav-text" href="#community-features">Discover</a>
+    <button class="theme-toggle" data-theme-toggle type="button" aria-label="Toggle color theme">☀ Light mode</button>
+    {% if user %}<a class="btn btn-primary" href="{{ url_for('dashboard') }}">My community</a>{% else %}<a class="btn btn-quiet" href="{{ url_for('login') }}">Sign in</a><a class="btn btn-primary" href="{{ url_for('register') }}">Join the community</a>{% endif %}
+  </nav>
+</header>
+<main class="landing-main">
 {% with messages = get_flashed_messages() %}{% for message in messages %}<p class="flash">{{ message }}</p>{% endfor %}{% endwith %}
-<section class="hero"><p class="eyebrow">Your people. Your place.</p><h1>Welcome to the <span>House of Jacob.</span></h1><p class="lead">More than a social app. It’s a community. Find your voice, share what matters, and build meaningful connections in a space designed for belonging.</p><div class="actions">{% if user %}<a class="btn btn-primary" href="{{ url_for('dashboard') }}">Enter your community →</a><form method="POST" action="{{ url_for('logout') }}"><button type="submit" class="btn btn-quiet">Sign out</button></form>{% else %}<a class="btn btn-primary" href="{{ url_for('register') }}">Create your account →</a><a class="btn btn-quiet" href="{{ url_for('login') }}">I already have an account</a>{% endif %}</div><p class="muted">A welcoming place to share, listen, and grow together.</p></section>
-<section class="grid"><div class="card"><div class="feature-icon">✦</div><h2>Share your story</h2><p>Post your thoughts, milestones, and moments with your community.</p></div><div class="card"><div class="feature-icon">♧</div><h2>Make connections</h2><p>Meet people, discover shared interests, and grow together.</p></div><div class="card"><div class="feature-icon">◐</div><h2>Your space, your way</h2><p>Personalise your profile and switch between elegant dark and light themes.</p></div></section>
-</main><footer>♛ House of Jacob · <span data-year>2026</span><br><span class="muted">More than a social app. It’s a community.</span></footer>
-</body></html>
+<section class="landing-hero">
+  <div class="hero-copy">
+    <p class="eyebrow"><span class="eyebrow-mark">✦</span> Your people. Your place.</p>
+    <h1>Belong to something <span>beautiful.</span></h1>
+    <p class="lead">More than a social app. It’s a community. Share what matters, discover meaningful connections, and make room for every voice.</p>
+    <div class="actions">
+      {% if user %}<a class="btn btn-primary btn-large" href="{{ url_for('dashboard') }}">Enter your community <span aria-hidden="true">→</span></a><form method="POST" action="{{ url_for('logout') }}"><button type="submit" class="btn btn-quiet">Sign out</button></form>
+      {% else %}<a class="btn btn-primary btn-large" href="{{ url_for('register') }}">Join House of Jacob <span aria-hidden="true">→</span></a><a class="btn btn-quiet btn-large" href="{{ url_for('login') }}">I have an account</a>{% endif %}
+    </div>
+    <div class="trust-line"><span class="trust-dot"></span> A welcoming place to share, listen, and grow together.</div>
+  </div>
+  <div class="showcase" aria-label="Preview of the House of Jacob community features">
+    <div class="showcase-glow"></div>
+    <div class="showcase-window">
+      <div class="window-top"><div class="window-brand"><span class="mini-crown">♛</span><span>HOUSE OF JACOB</span></div><div class="window-dots"><i></i><i></i><i></i></div></div>
+      <div class="preview-layout">
+        <aside class="preview-rail"><span class="rail-active">⌂</span><span>◉</span><span>✉</span><span>☎</span><span>⚙</span></aside>
+        <div class="preview-feed">
+          <div class="preview-heading"><div><small>YOUR COMMUNITY</small><h3>A place to belong.</h3></div><span class="preview-avatar">J</span></div>
+          <div class="preview-welcome"><span>✦</span><div><strong>Good to see you.</strong><small>Every connection starts somewhere.</small></div></div>
+          <div class="preview-post"><div class="preview-person"><span class="preview-avatar gold-avatar">M</span><div><strong>Michael A.</strong><small>Shared with the community</small></div><span class="preview-more">•••</span></div><p>Small acts of kindness can make a big difference. What is one good thing you want to share today?</p><div class="preview-reactions"><span>♡ 12</span><span>◌ 4 replies</span><span>↗ Share</span></div></div>
+          <div class="preview-post second-post"><div class="preview-person"><span class="preview-avatar purple-avatar">A</span><div><strong>Angela K.</strong><small>Just now</small></div></div><p>Grateful for spaces where everyone can feel welcome. ✨</p><div class="preview-reactions"><span>♡ Like</span><span>◌ Reply</span></div></div>
+        </div>
+      </div>
+    </div>
+    <div class="float-chip chip-message"><span>✉</span><div><strong>Stay connected</strong><small>Private messages</small></div></div>
+    <div class="float-chip chip-call"><span>☎</span><div><strong>Talk face to face</strong><small>Voice & video rooms</small></div></div>
+  </div>
+</section>
+<section id="community-features" class="feature-section">
+  <div class="feature-intro"><p class="eyebrow">Made for connection</p><h2>Everything feels better <span>together.</span></h2><p>A thoughtful space for sharing your story and keeping in touch.</p></div>
+  <div class="grid feature-grid">
+    <div class="card feature-card"><div class="feature-icon">✦</div><h2>Share your story</h2><p>Post your thoughts, milestones, and everyday moments with your community.</p><span class="feature-number">01</span></div>
+    <div class="card feature-card"><div class="feature-icon">✉</div><h2>Meaningful messages</h2><p>Continue the conversation privately with other House of Jacob members.</p><span class="feature-number">02</span></div>
+    <div class="card feature-card"><div class="feature-icon">◉</div><h2>Closer conversations</h2><p>Open a voice or video room and invite someone to join you.</p><span class="feature-number">03</span></div>
+  </div>
+</section>
+<section class="closing-cta"><div><p class="eyebrow">Your place is here</p><h2>Come as you are. <span>Connect meaningfully.</span></h2></div>{% if user %}<a class="btn btn-primary btn-large" href="{{ url_for('dashboard') }}">Go to my community →</a>{% else %}<a class="btn btn-primary btn-large" href="{{ url_for('register') }}">Create your account →</a>{% endif %}</section>
+</main>
+<footer><span class="footer-crown">♛</span><br>House of Jacob · <span data-year>2026</span><br><span class="muted">More than a social app. It’s a community.</span></footer>
+</body>
+</html>
