@@ -114,6 +114,7 @@ def login():
 
 
 
+
 @app.route("/dashboard")
 @login_required
 def dashboard():
@@ -123,12 +124,21 @@ def dashboard():
             (session["user_id"],)
         ).fetchone()
 
-    if user is None:
-        session.clear()
-        flash("Please sign in again.")
-        return redirect(url_for("login"))
+        if user is None:
+            session.clear()
+            flash("Please sign in again.")
+            return redirect(url_for("login"))
 
-    return render_template("dashboard.html", user=user)
+        posts = db.execute("""
+            SELECT posts.id, posts.content, posts.created_at,
+                   users.display_name
+            FROM posts
+            JOIN users ON users.id = posts.user_id
+            ORDER BY posts.id DESC
+        """).fetchall()
+
+    return render_template("dashboard.html", user=user, posts=posts)
+
 
 
 
