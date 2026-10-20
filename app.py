@@ -26,6 +26,10 @@ def get_db():
 def init_db():
     DB_PATH.parent.mkdir(parents=True, exist_ok=True)
     with get_db() as db:
+        def init_db():
+    DB_PATH.parent.mkdir(parents=True, exist_ok=True)
+
+    with get_db() as db:
         db.execute("""
             CREATE TABLE IF NOT EXISTS users (
                 id INTEGER PRIMARY KEY AUTOINCREMENT,
@@ -35,6 +39,17 @@ def init_db():
                 bio TEXT NOT NULL DEFAULT '',
                 interests TEXT NOT NULL DEFAULT '',
                 created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+            )
+        """)
+
+        db.execute("""
+            CREATE TABLE IF NOT EXISTS posts (
+                id INTEGER PRIMARY KEY AUTOINCREMENT,
+                user_id INTEGER NOT NULL,
+                content TEXT NOT NULL,
+                created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+                FOREIGN KEY (user_id) REFERENCES users (id)
+                    ON DELETE CASCADE
             )
         """)
 
