@@ -294,7 +294,10 @@ def messages():
                     """,
                     (session["user_id"], selected_id, selected_id, session["user_id"])
                 ).fetchall()
-    return render_template("messages.html", people=people, selected=selected, conversation=conversation)
+    invite_url = request.args.get("invite", "").strip()
+    if not invite_url.startswith("https://meet.jit.si/HOJ-private-"):
+        invite_url = ""
+    return render_template("messages.html", people=people, selected=selected, conversation=conversation, invite_url=invite_url)
 
 
 @app.route("/messages/send", methods=["POST"])
