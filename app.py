@@ -9,7 +9,6 @@ BASE_DIR = Path(__file__).resolve().parent
 DB_PATH = Path(os.environ.get("HOUSE_OF_JACOB_DB_PATH", str(BASE_DIR / "house_of_jacob.db")))
 
 app = Flask(__name__)
-# For local learning only. Before deployment, set a long random secret in an environment variable.
 app.secret_key = os.environ.get("HOUSE_OF_JACOB_SECRET") or ("local-learning-secret-change-before-deploy" if not os.environ.get("RENDER") else None)
 if not app.secret_key:
     raise RuntimeError("Set HOUSE_OF_JACOB_SECRET in the hosting environment before deploying.")
@@ -118,10 +117,6 @@ def dashboard():
             "SELECT id, display_name, email, bio, interests, created_at FROM users WHERE id = ?",
             (session["user_id"],)
         ).fetchone()
-    if user is None:
-        session.clear()
-        flash("Please sign in again.")
-        return redirect(url_for("login"))
         posts = db.execute(
             """
             SELECT posts.id, posts.content, posts.created_at, users.display_name
@@ -130,6 +125,11 @@ def dashboard():
             ORDER BY posts.created_at DESC, posts.id DESC
             """
         ).fetchall()
+
+    if user is None:
+        session.clear()
+        flash("Please sign in again.")
+        return redirect(url_for("login"))
     return render_template("dashboard.html", user=user, posts=posts)
 
 
@@ -137,21 +137,17 @@ def dashboard():
 @login_required
 def create_post():
     content = request.form.get("content", "").strip()
-
     if not content:
         flash("Your post cannot be empty.")
         return redirect(url_for("dashboard"))
-
     if len(content) > 2000:
         flash("Your post must be 2000 characters or fewer.")
         return redirect(url_for("dashboard"))
-
     with get_db() as db:
         db.execute(
             "INSERT INTO posts (user_id, content) VALUES (?, ?)",
             (session["user_id"], content),
         )
-
     flash("Your post was published.")
     return redirect(url_for("dashboard"))
 
@@ -184,5 +180,4 @@ def logout():
 init_db()
 
 if __name__ == "__main__":
-    # Local development only. Production uses Gunicorn via the Procfile.
     app.run(debug=False)

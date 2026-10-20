@@ -1,80 +1,11 @@
-
 <!DOCTYPE html>
-<html lang="en">
-<head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>The House of Jacob</title>
-    <style>
-        body {
-            margin: 0;
-            font-family: Arial, sans-serif;
-            background: #111827;
-            color: white;
-            text-align: center;
-        }
-        header {
-            padding: 25px;
-            background: #1f2937;
-            border-bottom: 2px solid #d4af37;
-        }
-        h1 { color: #d4af37; }
-        main { padding: 55px 20px; }
-        p { color: #d1d5db; line-height: 1.7; }
-        a {
-            display: inline-block;
-            margin: 10px;
-            padding: 13px 22px;
-            border-radius: 7px;
-            text-decoration: none;
-            font-weight: bold;
-        }
-        .signup {
-            background: #d4af37;
-            color: #111827;
-        }
-        .login {
-            border: 1px solid #d4af37;
-            color: #f3d875;
-        }
-        footer {
-            margin-top: 40px;
-            padding: 20px;
-            background: #1f2937;
-            color: #9ca3af;
-        }
-    </style>
-</head>
+<html lang="en" data-theme="dark">
+<head><meta charset="UTF-8"><meta name="viewport" content="width=device-width, initial-scale=1"><meta name="theme-color" content="#0d0f12"><title>House of Jacob — Community</title><link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}"><script defer src="{{ url_for('static', filename='site.js') }}"></script></head>
 <body>
-    <header>
-        <h1>The House of Jacob</h1>
-        <p>A place to connect, share, and belong.</p>
-    </header>
-
-    <main>
-        {% with messages = get_flashed_messages() %}
-            {% for message in messages %}
-                <p>{{ message }}</p>
-            {% endfor %}
-        {% endwith %}
-
-        {% if user %}
-            <h2>Welcome, {{ user["display_name"] }}!</h2>
-            <p>Your community journey starts here.</p>
-            <a class="signup" href="{{ url_for('dashboard') }}">My Dashboard</a>
-            <form method="POST" action="{{ url_for('logout') }}">
-                <button type="submit">Sign Out</button>
-            </form>
-        {% else %}
-            <h2>Welcome to The House of Jacob</h2>
-            <p>Join our community to create your profile and connect with others.</p>
-            <a class="signup" href="{{ url_for('register') }}">Create Account</a>
-            <a class="login" href="{{ url_for('login') }}">Sign In</a>
-        {% endif %}
-    </main>
-
-    <footer>
-        &copy; 2026 The House of Jacob
-    </footer>
-</body>
-</html>
+<header class="topbar"><a class="brand" href="{{ url_for('index') }}"><span class="crown">♛</span><span>HOUSE OF JACOB<small>Connection • Community • Belonging</small></span></a><nav class="nav"><button class="theme-toggle" data-theme-toggle type="button" aria-label="Toggle color theme">☀ Light mode</button>{% if user %}<a class="btn btn-primary" href="{{ url_for('dashboard') }}">My community</a>{% else %}<a class="btn btn-quiet" href="{{ url_for('login') }}">Sign in</a><a class="btn btn-primary" href="{{ url_for('register') }}">Join the community</a>{% endif %}</nav></header>
+<main>
+{% with messages = get_flashed_messages() %}{% for message in messages %}<p class="flash">{{ message }}</p>{% endfor %}{% endwith %}
+<section class="hero"><p class="eyebrow">Your people. Your place.</p><h1>Welcome to the <span>House of Jacob.</span></h1><p class="lead">More than a social app. It’s a community. Find your voice, share what matters, and build meaningful connections in a space designed for belonging.</p><div class="actions">{% if user %}<a class="btn btn-primary" href="{{ url_for('dashboard') }}">Enter your community →</a><form method="POST" action="{{ url_for('logout') }}"><button type="submit" class="btn btn-quiet">Sign out</button></form>{% else %}<a class="btn btn-primary" href="{{ url_for('register') }}">Create your account →</a><a class="btn btn-quiet" href="{{ url_for('login') }}">I already have an account</a>{% endif %}</div><p class="muted">A welcoming place to share, listen, and grow together.</p></section>
+<section class="grid"><div class="card"><div class="feature-icon">✦</div><h2>Share your story</h2><p>Post your thoughts, milestones, and moments with your community.</p></div><div class="card"><div class="feature-icon">♧</div><h2>Make connections</h2><p>Meet people, discover shared interests, and grow together.</p></div><div class="card"><div class="feature-icon">◐</div><h2>Your space, your way</h2><p>Personalise your profile and switch between elegant dark and light themes.</p></div></section>
+</main><footer>♛ House of Jacob · <span data-year>2026</span><br><span class="muted">More than a social app. It’s a community.</span></footer>
+</body></html>
