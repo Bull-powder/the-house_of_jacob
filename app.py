@@ -1,4 +1,4 @@
-from flask import os Flask, render_template, request, redirect, url_for, session, flash
+import os from flask import os Flask, render_template, request, redirect, url_for, session, flash
 from werkzeug.security import generate_password_hash, check_password_hash
 import sqlite3
 from pathlib import Path
