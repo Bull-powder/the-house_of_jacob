@@ -125,7 +125,30 @@ def dashboard():
         session.clear()
         flash("Please sign in again.")
         return redirect(url_for("login"))
-    return render_template("dashboard.html", user=user)
+        return render_template("dashboard.html", user=user)
+
+
+@app.route("/create-post", methods=["POST"])
+@login_required
+def create_post():
+    content = request.form.get("content", "").strip()
+
+    if not content:
+        flash("Please write something before posting.")
+        return redirect(url_for("dashboard"))
+
+    if len(content) > 2000:
+        flash("Your post must be 2,000 characters or fewer.")
+        return redirect(url_for("dashboard"))
+
+    with get_db() as db:
+        db.execute(
+            "INSERT INTO posts (user_id, content) VALUES (?, ?)",
+            (session["user_id"], content)
+        )
+
+    flash("Your post has been published!")
+    return redirect(url_for("dashboard"))
 
 
 @app.route("/profile", methods=["POST"])
