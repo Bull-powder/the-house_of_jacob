@@ -1,0 +1,28 @@
+
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Dashboard | The House of Jacob</title>
+</head>
+<body>
+    <h1>Welcome to The House of Jacob</h1>
+
+    {% with messages = get_flashed_messages() %}
+        {% for message in messages %}
+            <p>{{ message }}</p>
+        {% endfor %}
+    {% endwith %}
+
+    <h2>Hello, {{ user["display_name"] }}!</h2>
+
+    <p>Email: {{ user["email"] }}</p>
+    <p>Bio: {{ user["bio"] or "No bio added yet." }}</p>
+    <p>Interests: {{ user["interests"] or "No interests added yet." }}</p>
+
+    <p>Member since: {{ user["created_at"] }}</p>
+
+    <p>You are signed in successfully.</p>
+</body>
+</html>
