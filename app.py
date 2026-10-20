@@ -2,6 +2,8 @@ import os
 from flask import Flask, render_template, request, redirect, url_for, session, flash
 from werkzeug.security import generate_password_hash, check_password_hash
 import sqlite3
+import uuid
+from werkzeug.utils import secure_filename
 from pathlib import Path
 from functools import wraps
 
@@ -12,7 +14,10 @@ app = Flask(__name__)
 app.secret_key = os.environ.get("HOUSE_OF_JACOB_SECRET") or ("local-learning-secret-change-before-deploy" if not os.environ.get("RENDER") else None)
 if not app.secret_key:
     raise RuntimeError("Set HOUSE_OF_JACOB_SECRET in the hosting environment before deploying.")
-app.config.update(SESSION_COOKIE_HTTPONLY=True, SESSION_COOKIE_SAMESITE="Lax", SESSION_COOKIE_SECURE=bool(os.environ.get("RENDER")))
+app.config.update(SESSION_COOKIE_HTTPONLY=True, SESSION_COOKIE_SAMESITE="Lax", SESSION_COOKIE_SECURE=bool(os.environ.get("RENDER")), MAX_CONTENT_LENGTH=50 * 1024 * 1024)
+UPLOAD_DIR = Path(os.environ.get("HOUSE_OF_JACOB_UPLOAD_DIR", str(BASE_DIR / "static" / "uploads")))
+ALLOWED_IMAGE_EXTENSIONS = {"png", "jpg", "jpeg", "gif", "webp"}
+ALLOWED_VIDEO_EXTENSIONS = {"mp4", "webm", "mov"}
 
 
 def get_db():
@@ -33,6 +38,7 @@ def init_db():
                 password_hash TEXT NOT NULL,
                 bio TEXT NOT NULL DEFAULT '',
                 interests TEXT NOT NULL DEFAULT '',
+                profile_image TEXT NOT NULL DEFAULT '',
                 created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
             )
         """)
@@ -40,7 +46,9 @@ def init_db():
             CREATE TABLE IF NOT EXISTS posts (
                 id INTEGER PRIMARY KEY AUTOINCREMENT,
                 user_id INTEGER NOT NULL,
-                content TEXT NOT NULL CHECK(length(content) <= 2000),
+                content TEXT NOT NULL DEFAULT '' CHECK(length(content) <= 2000),
+                media_path TEXT NOT NULL DEFAULT '',
+                media_type TEXT NOT NULL DEFAULT '',
                 created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
                 FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE
             )
@@ -56,7 +64,16 @@ def init_db():
                 FOREIGN KEY (recipient_id) REFERENCES users(id) ON DELETE CASCADE
             )
         """)
+        user_columns = {row["name"] for row in db.execute("PRAGMA table_info(users)")}
+        if "profile_image" not in user_columns: db.execute("ALTER TABLE users ADD COLUMN profile_image TEXT NOT NULL DEFAULT ''")
+        post_columns = {row["name"] for row in db.execute("PRAGMA table_info(posts)")}
+        if "media_path" not in post_columns: db.execute("ALTER TABLE posts ADD COLUMN media_path TEXT NOT NULL DEFAULT ''")
+        if "media_type" not in post_columns: db.execute("ALTER TABLE posts ADD COLUMN media_type TEXT NOT NULL DEFAULT ''")
+        db.execute("""CREATE TABLE IF NOT EXISTS comments (id INTEGER PRIMARY KEY AUTOINCREMENT, post_id INTEGER NOT NULL, user_id INTEGER NOT NULL, content TEXT NOT NULL CHECK(length(content) <= 1000), created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP, FOREIGN KEY(post_id) REFERENCES posts(id) ON DELETE CASCADE, FOREIGN KEY(user_id) REFERENCES users(id) ON DELETE CASCADE)""")
+        db.execute("""CREATE TABLE IF NOT EXISTS reactions (id INTEGER PRIMARY KEY AUTOINCREMENT, post_id INTEGER NOT NULL, user_id INTEGER NOT NULL, reaction TEXT NOT NULL DEFAULT 'like', created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP, UNIQUE(post_id,user_id), FOREIGN KEY(post_id) REFERENCES posts(id) ON DELETE CASCADE, FOREIGN KEY(user_id) REFERENCES users(id) ON DELETE CASCADE)""")
         db.execute("CREATE INDEX IF NOT EXISTS idx_dm_pair ON direct_messages(sender_id, recipient_id, created_at)")
+        db.execute("CREATE INDEX IF NOT EXISTS idx_comments_post ON comments(post_id, created_at)")
+        db.execute("CREATE INDEX IF NOT EXISTS idx_reactions_post ON reactions(post_id)")
 
 
 def login_required(view):
@@ -124,44 +141,59 @@ def login():
 @app.route("/dashboard")
 @login_required
 def dashboard():
+    query = request.args.get("q", "").strip()[:100]
     with get_db() as db:
-        user = db.execute(
-            "SELECT id, display_name, email, bio, interests, created_at FROM users WHERE id = ?",
-            (session["user_id"],)
-        ).fetchone()
-        posts = db.execute(
-            """
-            SELECT posts.id, posts.content, posts.created_at, users.display_name
-            FROM posts
-            JOIN users ON users.id = posts.user_id
-            ORDER BY posts.created_at DESC, posts.id DESC
-            """
-        ).fetchall()
-
+        user = db.execute("SELECT id, display_name, email, bio, interests, profile_image, created_at FROM users WHERE id = ?", (session["user_id"],)).fetchone()
+        params = [session["user_id"]]
+        where = ""
+        if query:
+            where = "WHERE posts.content LIKE ? OR users.display_name LIKE ?"
+            params.extend(["%" + query + "%", "%" + query + "%"])
+        rows = db.execute("""
+            SELECT posts.id, posts.user_id, posts.content, posts.media_path, posts.media_type, posts.created_at, users.display_name, users.profile_image,
+            (SELECT COUNT(*) FROM comments c WHERE c.post_id=posts.id) AS comment_count,
+            (SELECT COUNT(*) FROM reactions r WHERE r.post_id=posts.id) AS reaction_count,
+            (SELECT reaction FROM reactions r WHERE r.post_id=posts.id AND r.user_id=?) AS my_reaction
+            FROM posts JOIN users ON users.id=posts.user_id """ + where + """
+            ORDER BY posts.created_at DESC, posts.id DESC LIMIT 100
+        """, params).fetchall()
+        people = []
+        if query:
+            like = "%" + query + "%"
+            people = db.execute("SELECT id,display_name,bio,profile_image FROM users WHERE id != ? AND (display_name LIKE ? OR bio LIKE ? OR interests LIKE ?) ORDER BY display_name COLLATE NOCASE LIMIT 20", (session["user_id"],like,like,like)).fetchall()
+        posts = []
+        for row in rows:
+            item = dict(row)
+            item["comments"] = [dict(c) for c in db.execute("SELECT comments.content,comments.created_at,users.display_name,users.profile_image FROM comments JOIN users ON users.id=comments.user_id WHERE comments.post_id=? ORDER BY comments.created_at,comments.id LIMIT 50", (item["id"],)).fetchall()]
+            posts.append(item)
     if user is None:
-        session.clear()
-        flash("Please sign in again.")
-        return redirect(url_for("login"))
-    return render_template("dashboard.html", user=user, posts=posts)
+        session.clear(); flash("Please sign in again."); return redirect(url_for("login"))
+    return render_template("dashboard.html", user=user, posts=posts, query=query, people=people)
 
 
 @app.route("/create-post", methods=["POST"])
 @login_required
 def create_post():
     content = request.form.get("content", "").strip()
-    if not content:
-        flash("Your post cannot be empty.")
-        return redirect(url_for("dashboard"))
+    upload = request.files.get("media")
+    media_path, media_type = "", ""
+    if not content and (not upload or not upload.filename):
+        flash("Add text or choose a photo/video."); return redirect(url_for("dashboard"))
     if len(content) > 2000:
-        flash("Your post must be 2000 characters or fewer.")
-        return redirect(url_for("dashboard"))
+        flash("Your post must be 2000 characters or fewer."); return redirect(url_for("dashboard"))
+    if upload and upload.filename:
+        safe = secure_filename(upload.filename)
+        ext = safe.rsplit(".",1)[-1].lower() if "." in safe else ""
+        if ext in ALLOWED_IMAGE_EXTENSIONS: media_type = "image"
+        elif ext in ALLOWED_VIDEO_EXTENSIONS: media_type = "video"
+        else:
+            flash("Use PNG, JPG, GIF, WEBP images or MP4, WEBM, MOV videos."); return redirect(url_for("dashboard"))
+        UPLOAD_DIR.mkdir(parents=True, exist_ok=True)
+        media_path = uuid.uuid4().hex + "." + ext
+        upload.save(UPLOAD_DIR / media_path)
     with get_db() as db:
-        db.execute(
-            "INSERT INTO posts (user_id, content) VALUES (?, ?)",
-            (session["user_id"], content),
-        )
-    flash("Your post was published.")
-    return redirect(url_for("dashboard"))
+        db.execute("INSERT INTO posts (user_id,content,media_path,media_type) VALUES (?,?,?,?)", (session["user_id"],content,media_path,media_type))
+    flash("Your post was published."); return redirect(url_for("dashboard"))
 
 
 @app.route("/profile", methods=["POST"])
@@ -170,18 +202,54 @@ def update_profile():
     display_name = request.form.get("display_name", "").strip()
     bio = request.form.get("bio", "").strip()[:240]
     interests = request.form.get("interests", "").strip()[:240]
+    upload = request.files.get("profile_image")
+    profile_image = None
+    if upload and upload.filename:
+        safe = secure_filename(upload.filename)
+        ext = safe.rsplit(".",1)[-1].lower() if "." in safe else ""
+        if ext not in ALLOWED_IMAGE_EXTENSIONS:
+            flash("Profile photos must be PNG, JPG, GIF, or WEBP."); return redirect(url_for("dashboard"))
+        UPLOAD_DIR.mkdir(parents=True, exist_ok=True)
+        profile_image = uuid.uuid4().hex + "." + ext
+        upload.save(UPLOAD_DIR / profile_image)
     if not display_name:
         flash("Display name cannot be empty.")
         return redirect(url_for("dashboard"))
     with get_db() as db:
-        db.execute(
-            "UPDATE users SET display_name = ?, bio = ?, interests = ? WHERE id = ?",
-            (display_name, bio, interests, session["user_id"])
-        )
+        if profile_image:
+            db.execute("UPDATE users SET display_name=?,bio=?,interests=?,profile_image=? WHERE id=?", (display_name,bio,interests,profile_image,session["user_id"]))
+        else:
+            db.execute("UPDATE users SET display_name=?,bio=?,interests=? WHERE id=?", (display_name,bio,interests,session["user_id"]))
     flash("Your profile has been updated.")
     return redirect(url_for("dashboard"))
 
 
+
+
+@app.route("/posts/<int:post_id>/comment", methods=["POST"])
+@login_required
+def add_comment(post_id):
+    content = request.form.get("content", "").strip()
+    if not content or len(content)>1000: flash("Replies must contain 1–1000 characters."); return redirect(url_for("dashboard"))
+    with get_db() as db:
+        if not db.execute("SELECT id FROM posts WHERE id=?", (post_id,)).fetchone(): flash("Post not found."); return redirect(url_for("dashboard"))
+        db.execute("INSERT INTO comments(post_id,user_id,content) VALUES(?,?,?)", (post_id,session["user_id"],content))
+    return redirect(url_for("dashboard")+"#post-"+str(post_id))
+
+
+@app.route("/posts/<int:post_id>/react", methods=["POST"])
+@login_required
+def react_to_post(post_id):
+    reaction=request.form.get("reaction","like")
+    if reaction not in {"like","love","support","laugh"}: reaction="like"
+    with get_db() as db:
+        if not db.execute("SELECT id FROM posts WHERE id=?", (post_id,)).fetchone(): flash("Post not found."); return redirect(url_for("dashboard"))
+        current=db.execute("SELECT reaction FROM reactions WHERE post_id=? AND user_id=?", (post_id,session["user_id"])).fetchone()
+        if current and current["reaction"]==reaction:
+            db.execute("DELETE FROM reactions WHERE post_id=? AND user_id=?", (post_id,session["user_id"]))
+        else:
+            db.execute("INSERT INTO reactions(post_id,user_id,reaction) VALUES(?,?,?) ON CONFLICT(post_id,user_id) DO UPDATE SET reaction=excluded.reaction", (post_id,session["user_id"],reaction))
+    return redirect(url_for("dashboard")+"#post-"+str(post_id))
 
 
 @app.route("/messages")
