@@ -24,5 +24,7 @@
     <p>Member since: {{ user["created_at"] }}</p>
 
     <p>You are signed in successfully.</p>
-</body>
+<form method="POST" action="{{ url_for('logout') }}">
+    <button type="submit">Sign Out</button>
+</form> </body>
 </html>
