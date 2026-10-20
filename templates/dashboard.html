@@ -40,8 +40,28 @@
 
     <p>Member since: {{ user["created_at"] }}</p>
 
-    <p>You are signed in successfully.</p>
+   
+<p>You are signed in successfully.</p>
+
 <form method="POST" action="{{ url_for('logout') }}">
     <button type="submit">Sign Out</button>
-</form> </body>
+</form>
+
+<hr>
+<h2>Community Feed</h2>
+
+{% if posts %}
+    {% for post in posts %}
+        <article>
+            <h3>{{ post["display_name"] }}</h3>
+            <p>{{ post["content"] }}</p>
+            <small>Posted: {{ post["created_at"] }}</small>
+            <hr>
+        </article>
+    {% endfor %}
+{% else %}
+    <p>No posts yet. Be the first to share something!</p>
+{% endif %}
+
+</body>
 </html>
