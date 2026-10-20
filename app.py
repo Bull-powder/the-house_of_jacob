@@ -113,6 +113,7 @@ def login():
     return render_template("login.html")
 
 
+
 @app.route("/dashboard")
 @login_required
 def dashboard():
@@ -121,11 +122,14 @@ def dashboard():
             "SELECT id, display_name, email, bio, interests, created_at FROM users WHERE id = ?",
             (session["user_id"],)
         ).fetchone()
+
     if user is None:
         session.clear()
         flash("Please sign in again.")
         return redirect(url_for("login"))
-        return render_template("dashboard.html", user=user)
+
+    return render_template("dashboard.html", user=user)
+
 
 
 @app.route("/create-post", methods=["POST"])
