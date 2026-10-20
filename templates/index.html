@@ -14,32 +14,34 @@
             text-align: center;
         }
         header {
+            padding: 25px;
             background: #1f2937;
-            padding: 20px;
             border-bottom: 2px solid #d4af37;
         }
-        h1 {
-            color: #d4af37;
-        }
-        main {
-            padding: 50px 20px;
-        }
-        p {
-            color: #d1d5db;
-            line-height: 1.7;
-        }
-        .notice {
+        h1 { color: #d4af37; }
+        main { padding: 55px 20px; }
+        p { color: #d1d5db; line-height: 1.7; }
+        a {
             display: inline-block;
-            margin-top: 20px;
-            padding: 15px 24px;
+            margin: 10px;
+            padding: 13px 22px;
+            border-radius: 7px;
+            text-decoration: none;
+            font-weight: bold;
+        }
+        .signup {
+            background: #d4af37;
+            color: #111827;
+        }
+        .login {
             border: 1px solid #d4af37;
-            border-radius: 8px;
+            color: #f3d875;
         }
         footer {
-            margin-top: 50px;
+            margin-top: 40px;
             padding: 20px;
-            color: #9ca3af;
             background: #1f2937;
+            color: #9ca3af;
         }
     </style>
 </head>
@@ -50,10 +52,25 @@
     </header>
 
     <main>
-        <h2>Welcome to The House of Jacob</h2>
-        <p>Our community website is being prepared.</p>
-        <p>We are working to bring people together in one welcoming space.</p>
-        <div class="notice">Our website is currently being tested.</div>
+        {% with messages = get_flashed_messages() %}
+            {% for message in messages %}
+                <p>{{ message }}</p>
+            {% endfor %}
+        {% endwith %}
+
+        {% if user %}
+            <h2>Welcome, {{ user["display_name"] }}!</h2>
+            <p>Your community journey starts here.</p>
+            <a class="signup" href="{{ url_for('dashboard') }}">My Dashboard</a>
+            <form method="POST" action="{{ url_for('logout') }}">
+                <button type="submit">Sign Out</button>
+            </form>
+        {% else %}
+            <h2>Welcome to The House of Jacob</h2>
+            <p>Join our community to create your profile and connect with others.</p>
+            <a class="signup" href="{{ url_for('register') }}">Create Account</a>
+            <a class="login" href="{{ url_for('login') }}">Sign In</a>
+        {% endif %}
     </main>
 
     <footer>
