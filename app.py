@@ -45,6 +45,18 @@ def init_db():
                 FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE
             )
         """)
+        db.execute("""
+            CREATE TABLE IF NOT EXISTS direct_messages (
+                id INTEGER PRIMARY KEY AUTOINCREMENT,
+                sender_id INTEGER NOT NULL,
+                recipient_id INTEGER NOT NULL,
+                body TEXT NOT NULL CHECK(length(body) <= 4000),
+                created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+                FOREIGN KEY (sender_id) REFERENCES users(id) ON DELETE CASCADE,
+                FOREIGN KEY (recipient_id) REFERENCES users(id) ON DELETE CASCADE
+            )
+        """)
+        db.execute("CREATE INDEX IF NOT EXISTS idx_dm_pair ON direct_messages(sender_id, recipient_id, created_at)")
 
 
 def login_required(view):
@@ -168,6 +180,86 @@ def update_profile():
         )
     flash("Your profile has been updated.")
     return redirect(url_for("dashboard"))
+
+
+
+
+@app.route("/messages")
+@login_required
+def messages():
+    with get_db() as db:
+        people = db.execute(
+            """
+            SELECT u.id, u.display_name, u.bio,
+                   (SELECT body FROM direct_messages
+                    WHERE (sender_id = u.id AND recipient_id = ?)
+                       OR (sender_id = ? AND recipient_id = u.id)
+                    ORDER BY created_at DESC, id DESC LIMIT 1) AS last_message,
+                   (SELECT created_at FROM direct_messages
+                    WHERE (sender_id = u.id AND recipient_id = ?)
+                       OR (sender_id = ? AND recipient_id = u.id)
+                    ORDER BY created_at DESC, id DESC LIMIT 1) AS last_message_at
+            FROM users u WHERE u.id != ?
+            ORDER BY last_message_at DESC, u.display_name COLLATE NOCASE
+            """,
+            (session["user_id"], session["user_id"], session["user_id"], session["user_id"], session["user_id"])
+        ).fetchall()
+        selected_id = request.args.get("to", type=int)
+        selected = None
+        conversation = []
+        if selected_id:
+            selected = db.execute(
+                "SELECT id, display_name, bio FROM users WHERE id = ? AND id != ?",
+                (selected_id, session["user_id"])
+            ).fetchone()
+            if selected:
+                conversation = db.execute(
+                    """
+                    SELECT dm.id, dm.sender_id, dm.recipient_id, dm.body, dm.created_at,
+                           sender.display_name AS sender_name
+                    FROM direct_messages dm
+                    JOIN users sender ON sender.id = dm.sender_id
+                    WHERE (dm.sender_id = ? AND dm.recipient_id = ?)
+                       OR (dm.sender_id = ? AND dm.recipient_id = ?)
+                    ORDER BY dm.created_at ASC, dm.id ASC
+                    LIMIT 300
+                    """,
+                    (session["user_id"], selected_id, selected_id, session["user_id"])
+                ).fetchall()
+    return render_template("messages.html", people=people, selected=selected, conversation=conversation)
+
+
+@app.route("/messages/send", methods=["POST"])
+@login_required
+def send_message():
+    recipient_id = request.form.get("recipient_id", type=int)
+    body = request.form.get("body", "").strip()
+    if not recipient_id or not body:
+        flash("Choose a person and enter a message.")
+        return redirect(url_for("messages"))
+    if len(body) > 4000:
+        flash("Messages must be 4000 characters or fewer.")
+        return redirect(url_for("messages", to=recipient_id))
+    with get_db() as db:
+        recipient = db.execute("SELECT id FROM users WHERE id = ?", (recipient_id,)).fetchone()
+        if not recipient or recipient_id == session["user_id"]:
+            flash("That member is not available.")
+            return redirect(url_for("messages"))
+        db.execute(
+            "INSERT INTO direct_messages (sender_id, recipient_id, body) VALUES (?, ?, ?)",
+            (session["user_id"], recipient_id, body)
+        )
+    return redirect(url_for("messages", to=recipient_id))
+
+
+@app.route("/calls")
+@login_required
+def calls():
+    # Jitsi creates a browser-based meeting room. Share its link with the member
+    # you want to call; this does not provide native ringing or incoming-call alerts.
+    import secrets
+    room = "HouseOfJacob-" + secrets.token_urlsafe(18)
+    return render_template("calls.html", room=room, call_url="https://meet.jit.si/" + room)
 
 
 @app.route("/logout", methods=["POST"])
