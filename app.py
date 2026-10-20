@@ -3,6 +3,8 @@ from flask import Flask, render_template, request, redirect, url_for, session, f
 from werkzeug.security import generate_password_hash, check_password_hash
 import sqlite3
 import uuid
+import hmac
+import hashlib
 from werkzeug.utils import secure_filename
 from pathlib import Path
 from functools import wraps
@@ -326,11 +328,27 @@ def send_message():
 @app.route("/calls")
 @login_required
 def calls():
-    # Jitsi creates a browser-based meeting room. Share its link with the member
-    # you want to call; this does not provide native ringing or incoming-call alerts.
-    import secrets
-    room = "HouseOfJacob-" + secrets.token_urlsafe(18)
-    return render_template("calls.html", room=room, call_url="https://meet.jit.si/" + room)
+    return redirect(url_for("messages"))
+
+
+@app.route("/calls/<int:other_id>")
+@login_required
+def pair_call(other_id):
+    if other_id == session["user_id"]:
+        flash("Choose another member to start a call.")
+        return redirect(url_for("messages"))
+    with get_db() as db:
+        me = db.execute("SELECT id,display_name FROM users WHERE id=?", (session["user_id"],)).fetchone()
+        partner = db.execute("SELECT id,display_name FROM users WHERE id=?", (other_id,)).fetchone()
+        people = db.execute("SELECT id,display_name,profile_image FROM users WHERE id NOT IN (?,?) ORDER BY display_name COLLATE NOCASE", (session["user_id"],other_id)).fetchall()
+    if not partner:
+        flash("That member could not be found.")
+        return redirect(url_for("messages"))
+    pair = ":".join(str(i) for i in sorted((session["user_id"], other_id)))
+    digest = hmac.new(app.secret_key.encode("utf-8"), ("hoj-private-call:" + pair).encode("utf-8"), hashlib.sha256).hexdigest()[:32]
+    room = "HOJ-private-" + digest
+    call_url = "https://meet.jit.si/" + room
+    return render_template("calls.html", room=room, call_url=call_url, partner=partner, people=people, me=me)
 
 
 @app.route("/logout", methods=["POST"])
