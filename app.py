@@ -25,9 +25,6 @@ def get_db():
 
 def init_db():
     DB_PATH.parent.mkdir(parents=True, exist_ok=True)
-    with get_db() as db:
-        def init_db():
-    DB_PATH.parent.mkdir(parents=True, exist_ok=True)
 
     with get_db() as db:
         db.execute("""
