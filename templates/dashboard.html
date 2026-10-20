@@ -16,6 +16,23 @@
     {% endwith %}
 
     <h2>Hello, {{ user["display_name"] }}!</h2>
+    
+<h3>Share a post</h3>
+
+<form method="POST" action="{{ url_for('create_post') }}">
+    <label for="content">What would you like to share?</label>
+    <textarea
+        id="content"
+        name="content"
+        rows="5"
+        maxlength="2000"
+        placeholder="Write your message here..."
+        required
+    ></textarea>
+
+    <button type="submit">Publish Post</button>
+</form>
+
 
     <p>Email: {{ user["email"] }}</p>
     <p>Bio: {{ user["bio"] or "No bio added yet." }}</p>
