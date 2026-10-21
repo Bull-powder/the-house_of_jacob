@@ -403,7 +403,7 @@ def messages():
     with get_db() as db:
         people = db.execute(
             """
-            SELECT u.id, u.display_name, u.bio,
+            SELECT u.id, u.display_name, u.bio, u.profile_image,
                    (SELECT body FROM direct_messages
                     WHERE (sender_id = u.id AND recipient_id = ?)
                        OR (sender_id = ? AND recipient_id = u.id)
@@ -422,7 +422,7 @@ def messages():
         conversation = []
         if selected_id:
             selected = db.execute(
-                "SELECT id, display_name, bio FROM users WHERE id = ? AND id != ?",
+                "SELECT id, display_name, bio, profile_image FROM users WHERE id = ? AND id != ?",
                 (selected_id, session["user_id"])
             ).fetchone()
             if selected:
