@@ -3,6 +3,19 @@ from flask import Flask, render_template, request, redirect, url_for, session, f
 from werkzeug.security import generate_password_hash, check_password_hash
 import sqlite3
 import uuid
+
+# PostgreSQL is opt-in so adding DATABASE_URL to Render cannot silently switch
+# the live site to an empty database. Keep SQLite as the default until data is
+# deliberately migrated and HOUSE_OF_JACOB_STORAGE=postgres is set.
+STORAGE_BACKEND = os.environ.get("HOUSE_OF_JACOB_STORAGE", "sqlite").strip().lower()
+DATABASE_URL = os.environ.get("DATABASE_URL", "").strip()
+if STORAGE_BACKEND not in {"sqlite", "postgres"}:
+    raise RuntimeError("HOUSE_OF_JACOB_STORAGE must be either 'sqlite' or 'postgres'.")
+if STORAGE_BACKEND == "postgres":
+    if not DATABASE_URL:
+        raise RuntimeError("Set DATABASE_URL before enabling PostgreSQL storage.")
+    import psycopg
+    from psycopg.rows import dict_row
 from werkzeug.utils import secure_filename
 from pathlib import Path
 from functools import wraps
@@ -20,7 +33,35 @@ ALLOWED_IMAGE_EXTENSIONS = {"png", "jpg", "jpeg", "gif", "webp"}
 ALLOWED_VIDEO_EXTENSIONS = {"mp4", "webm", "mov"}
 
 
+class PostgresDB:
+    """Small compatibility layer for the existing parameterized SQL queries."""
+    def __init__(self, connection):
+        self.connection = connection
+
+    def __enter__(self):
+        return self
+
+    def __exit__(self, exc_type, exc, tb):
+        try:
+            if exc_type:
+                self.connection.rollback()
+            else:
+                self.connection.commit()
+        finally:
+            self.connection.close()
+        return False
+
+    def execute(self, query, params=()):
+        # The app uses qmark placeholders for SQLite. Its current queries do
+        # not contain literal question marks, so this conversion is safe here.
+        query = query.replace("?", "%s")
+        query = query.replace("COLLATE NOCASE", "")
+        return self.connection.execute(query, params)
+
+
 def get_db():
+    if STORAGE_BACKEND == "postgres":
+        return PostgresDB(psycopg.connect(DATABASE_URL, row_factory=dict_row))
     conn = sqlite3.connect(DB_PATH)
     conn.row_factory = sqlite3.Row
     conn.execute("PRAGMA foreign_keys = ON")
@@ -28,6 +69,52 @@ def get_db():
 
 
 def init_db():
+    if STORAGE_BACKEND == "postgres":
+        # This creates a schema only; it does NOT migrate existing SQLite data.
+        # Keep this backend disabled until a verified data migration is complete.
+        schema = [
+            """CREATE TABLE IF NOT EXISTS users (
+                id BIGSERIAL PRIMARY KEY, display_name TEXT NOT NULL,
+                email TEXT NOT NULL UNIQUE, password_hash TEXT NOT NULL,
+                bio TEXT NOT NULL DEFAULT '', interests TEXT NOT NULL DEFAULT '',
+                profile_image TEXT NOT NULL DEFAULT '',
+                created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP)""",
+            """CREATE TABLE IF NOT EXISTS posts (
+                id BIGSERIAL PRIMARY KEY, user_id BIGINT NOT NULL,
+                content TEXT NOT NULL DEFAULT '' CHECK(length(content) <= 2000),
+                media_path TEXT NOT NULL DEFAULT '', media_type TEXT NOT NULL DEFAULT '',
+                created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+                FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE)""",
+            """CREATE TABLE IF NOT EXISTS direct_messages (
+                id BIGSERIAL PRIMARY KEY, sender_id BIGINT NOT NULL,
+                recipient_id BIGINT NOT NULL,
+                body TEXT NOT NULL CHECK(length(body) <= 4000),
+                created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+                FOREIGN KEY (sender_id) REFERENCES users(id) ON DELETE CASCADE,
+                FOREIGN KEY (recipient_id) REFERENCES users(id) ON DELETE CASCADE)""",
+            """CREATE TABLE IF NOT EXISTS comments (
+                id BIGSERIAL PRIMARY KEY, post_id BIGINT NOT NULL,
+                user_id BIGINT NOT NULL,
+                content TEXT NOT NULL CHECK(length(content) <= 1000),
+                created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+                FOREIGN KEY (post_id) REFERENCES posts(id) ON DELETE CASCADE,
+                FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE)""",
+            """CREATE TABLE IF NOT EXISTS reactions (
+                id BIGSERIAL PRIMARY KEY, post_id BIGINT NOT NULL,
+                user_id BIGINT NOT NULL, reaction TEXT NOT NULL DEFAULT 'like',
+                created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+                UNIQUE(post_id, user_id),
+                FOREIGN KEY (post_id) REFERENCES posts(id) ON DELETE CASCADE,
+                FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE)""",
+            "CREATE INDEX IF NOT EXISTS idx_dm_pair ON direct_messages(sender_id, recipient_id, created_at)",
+            "CREATE INDEX IF NOT EXISTS idx_comments_post ON comments(post_id, created_at)",
+            "CREATE INDEX IF NOT EXISTS idx_reactions_post ON reactions(post_id)"
+        ]
+        with get_db() as db:
+            for statement in schema:
+                db.execute(statement)
+        return
+
     DB_PATH.parent.mkdir(parents=True, exist_ok=True)
     with get_db() as db:
         db.execute("""
