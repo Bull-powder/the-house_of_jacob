@@ -10,7 +10,7 @@
 </head>
 <body class="social-dashboard">
 <header class="topbar social-topbar">
-  <a class="brand" href="{{ url_for('dashboard') }}"><span class="crown">♛</span><span>HOUSE OF JACOB<small>More than a social app. It's a community.</small></span></a>
+  <a class="brand site-logo" href="{{ url_for('dashboard') }}" aria-label="House of Jacob home"><img src="{{ url_for('static', filename='house-of-jacob-logo.svg', v='logo1') }}" alt="House of Jacob — Connect, Share, Grow"></a>
   <form class="social-search" method="GET" action="{{ url_for('dashboard') }}">
     <label class="sr-only" for="community-search">Search posts and members</label>
     <span aria-hidden="true">⌕</span><input id="community-search" name="q" value="{{ query }}" maxlength="100" placeholder="Search people, posts, or topics…">
