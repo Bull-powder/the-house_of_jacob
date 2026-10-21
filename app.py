@@ -3,6 +3,25 @@ from flask import Flask, render_template, request, redirect, url_for, session, f
 from werkzeug.security import generate_password_hash, check_password_hash
 import sqlite3
 import uuid
+import mimetypes
+
+try:
+    from supabase import create_client
+except ImportError:
+    create_client = None
+
+# PostgreSQL is opt-in so adding DATABASE_URL to Render cannot silently switch
+# the live site to an empty database. Keep SQLite as the default until data is
+# deliberately migrated and HOUSE_OF_JACOB_STORAGE=postgres is set.
+STORAGE_BACKEND = os.environ.get("HOUSE_OF_JACOB_STORAGE", "sqlite").strip().lower()
+DATABASE_URL = os.environ.get("DATABASE_URL", "").strip()
+if STORAGE_BACKEND not in {"sqlite", "postgres"}:
+    raise RuntimeError("HOUSE_OF_JACOB_STORAGE must be either 'sqlite' or 'postgres'.")
+if STORAGE_BACKEND == "postgres":
+    if not DATABASE_URL:
+        raise RuntimeError("Set DATABASE_URL before enabling PostgreSQL storage.")
+    import psycopg
+    from psycopg.rows import dict_row
 from werkzeug.utils import secure_filename
 from pathlib import Path
 from functools import wraps
@@ -16,11 +35,74 @@ if not app.secret_key:
     raise RuntimeError("Set HOUSE_OF_JACOB_SECRET in the hosting environment before deploying.")
 app.config.update(SESSION_COOKIE_HTTPONLY=True, SESSION_COOKIE_SAMESITE="Lax", SESSION_COOKIE_SECURE=bool(os.environ.get("RENDER")), MAX_CONTENT_LENGTH=50 * 1024 * 1024)
 UPLOAD_DIR = Path(os.environ.get("HOUSE_OF_JACOB_UPLOAD_DIR", str(BASE_DIR / "static" / "uploads")))
+SUPABASE_URL = os.environ.get("SUPABASE_URL", "").strip()
+SUPABASE_SECRET_KEY = os.environ.get("SUPABASE_SECRET_KEY", "").strip()
+SUPABASE_MEDIA_BUCKET = os.environ.get("SUPABASE_MEDIA_BUCKET", "community-media").strip()
+_supabase = None
+if STORAGE_BACKEND == "postgres" and not (SUPABASE_URL and SUPABASE_SECRET_KEY):
+    raise RuntimeError("PostgreSQL mode also requires SUPABASE_URL and SUPABASE_SECRET_KEY for persistent media.")
+if SUPABASE_URL and SUPABASE_SECRET_KEY:
+    if create_client is None:
+        raise RuntimeError("Install the supabase package to enable persistent media storage.")
+    _supabase = create_client(SUPABASE_URL, SUPABASE_SECRET_KEY)
 ALLOWED_IMAGE_EXTENSIONS = {"png", "jpg", "jpeg", "gif", "webp"}
 ALLOWED_VIDEO_EXTENSIONS = {"mp4", "webm", "mov"}
 
 
+def save_upload(upload, folder, filename, content_type):
+    """Store uploads in Supabase Storage when configured, otherwise locally for development."""
+    if _supabase:
+        object_path = f"{folder}/{filename}"
+        _supabase.storage.from_(SUPABASE_MEDIA_BUCKET).upload(
+            object_path,
+            upload.read(),
+            file_options={"content-type": content_type, "upsert": "false"},
+        )
+        return _supabase.storage.from_(SUPABASE_MEDIA_BUCKET).get_public_url(object_path)
+    UPLOAD_DIR.mkdir(parents=True, exist_ok=True)
+    upload.save(UPLOAD_DIR / filename)
+    return filename
+
+
+@app.template_global()
+def media_url(value):
+    """Render stored public media URLs or legacy/local upload filenames."""
+    if not value:
+        return ""
+    if value.startswith(("https://", "http://")):
+        return value
+    return url_for("static", filename="uploads/" + value)
+
+
+class PostgresDB:
+    """Small compatibility layer for the existing parameterized SQL queries."""
+    def __init__(self, connection):
+        self.connection = connection
+
+    def __enter__(self):
+        return self
+
+    def __exit__(self, exc_type, exc, tb):
+        try:
+            if exc_type:
+                self.connection.rollback()
+            else:
+                self.connection.commit()
+        finally:
+            self.connection.close()
+        return False
+
+    def execute(self, query, params=()):
+        # The app uses qmark placeholders for SQLite. Its current queries do
+        # not contain literal question marks, so this conversion is safe here.
+        query = query.replace("?", "%s")
+        query = query.replace("COLLATE NOCASE", "")
+        return self.connection.execute(query, params)
+
+
 def get_db():
+    if STORAGE_BACKEND == "postgres":
+        return PostgresDB(psycopg.connect(DATABASE_URL, row_factory=dict_row))
     conn = sqlite3.connect(DB_PATH)
     conn.row_factory = sqlite3.Row
     conn.execute("PRAGMA foreign_keys = ON")
@@ -28,6 +110,52 @@ def get_db():
 
 
 def init_db():
+    if STORAGE_BACKEND == "postgres":
+        # This creates a schema only; it does NOT migrate existing SQLite data.
+        # Keep this backend disabled until a verified data migration is complete.
+        schema = [
+            """CREATE TABLE IF NOT EXISTS users (
+                id BIGSERIAL PRIMARY KEY, display_name TEXT NOT NULL,
+                email TEXT NOT NULL UNIQUE, password_hash TEXT NOT NULL,
+                bio TEXT NOT NULL DEFAULT '', interests TEXT NOT NULL DEFAULT '',
+                profile_image TEXT NOT NULL DEFAULT '',
+                created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP)""",
+            """CREATE TABLE IF NOT EXISTS posts (
+                id BIGSERIAL PRIMARY KEY, user_id BIGINT NOT NULL,
+                content TEXT NOT NULL DEFAULT '' CHECK(length(content) <= 2000),
+                media_path TEXT NOT NULL DEFAULT '', media_type TEXT NOT NULL DEFAULT '',
+                created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+                FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE)""",
+            """CREATE TABLE IF NOT EXISTS direct_messages (
+                id BIGSERIAL PRIMARY KEY, sender_id BIGINT NOT NULL,
+                recipient_id BIGINT NOT NULL,
+                body TEXT NOT NULL CHECK(length(body) <= 4000),
+                created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+                FOREIGN KEY (sender_id) REFERENCES users(id) ON DELETE CASCADE,
+                FOREIGN KEY (recipient_id) REFERENCES users(id) ON DELETE CASCADE)""",
+            """CREATE TABLE IF NOT EXISTS comments (
+                id BIGSERIAL PRIMARY KEY, post_id BIGINT NOT NULL,
+                user_id BIGINT NOT NULL,
+                content TEXT NOT NULL CHECK(length(content) <= 1000),
+                created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+                FOREIGN KEY (post_id) REFERENCES posts(id) ON DELETE CASCADE,
+                FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE)""",
+            """CREATE TABLE IF NOT EXISTS reactions (
+                id BIGSERIAL PRIMARY KEY, post_id BIGINT NOT NULL,
+                user_id BIGINT NOT NULL, reaction TEXT NOT NULL DEFAULT 'like',
+                created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+                UNIQUE(post_id, user_id),
+                FOREIGN KEY (post_id) REFERENCES posts(id) ON DELETE CASCADE,
+                FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE)""",
+            "CREATE INDEX IF NOT EXISTS idx_dm_pair ON direct_messages(sender_id, recipient_id, created_at)",
+            "CREATE INDEX IF NOT EXISTS idx_comments_post ON comments(post_id, created_at)",
+            "CREATE INDEX IF NOT EXISTS idx_reactions_post ON reactions(post_id)"
+        ]
+        with get_db() as db:
+            for statement in schema:
+                db.execute(statement)
+        return
+
     DB_PATH.parent.mkdir(parents=True, exist_ok=True)
     with get_db() as db:
         db.execute("""
@@ -115,8 +243,15 @@ def register():
                 )
             flash("Account created. You can now sign in.")
             return redirect(url_for("login"))
-        except sqlite3.IntegrityError:
-            flash("That email is already registered. Try signing in.")
+        except Exception as exc:
+            is_duplicate = isinstance(exc, sqlite3.IntegrityError)
+            if STORAGE_BACKEND == "postgres":
+                is_duplicate = is_duplicate or isinstance(exc, psycopg.errors.UniqueViolation)
+            if is_duplicate:
+                flash("That email is already registered. Try signing in.")
+            else:
+                app.logger.exception("Account registration failed")
+                flash("We could not create your account right now. Please try again.")
     return render_template("register.html")
 
 
@@ -188,9 +323,14 @@ def create_post():
         elif ext in ALLOWED_VIDEO_EXTENSIONS: media_type = "video"
         else:
             flash("Use PNG, JPG, GIF, WEBP images or MP4, WEBM, MOV videos."); return redirect(url_for("dashboard"))
-        UPLOAD_DIR.mkdir(parents=True, exist_ok=True)
         media_path = uuid.uuid4().hex + "." + ext
-        upload.save(UPLOAD_DIR / media_path)
+        content_type = mimetypes.guess_type(safe)[0] or ("video/mp4" if media_type == "video" else "application/octet-stream")
+        try:
+            media_path = save_upload(upload, "posts", media_path, content_type)
+        except Exception:
+            app.logger.exception("Post media upload failed")
+            flash("The media upload failed. Please try again.")
+            return redirect(url_for("dashboard"))
     with get_db() as db:
         db.execute("INSERT INTO posts (user_id,content,media_path,media_type) VALUES (?,?,?,?)", (session["user_id"],content,media_path,media_type))
     flash("Your post was published."); return redirect(url_for("dashboard"))
@@ -209,9 +349,14 @@ def update_profile():
         ext = safe.rsplit(".",1)[-1].lower() if "." in safe else ""
         if ext not in ALLOWED_IMAGE_EXTENSIONS:
             flash("Profile photos must be PNG, JPG, GIF, or WEBP."); return redirect(url_for("dashboard"))
-        UPLOAD_DIR.mkdir(parents=True, exist_ok=True)
         profile_image = uuid.uuid4().hex + "." + ext
-        upload.save(UPLOAD_DIR / profile_image)
+        content_type = mimetypes.guess_type(safe)[0] or "application/octet-stream"
+        try:
+            profile_image = save_upload(upload, "profiles", profile_image, content_type)
+        except Exception:
+            app.logger.exception("Profile image upload failed")
+            flash("The profile photo upload failed. Please try again.")
+            return redirect(url_for("dashboard"))
     if not display_name:
         flash("Display name cannot be empty.")
         return redirect(url_for("dashboard"))
