@@ -39,6 +39,8 @@ SUPABASE_URL = os.environ.get("SUPABASE_URL", "").strip()
 SUPABASE_SECRET_KEY = os.environ.get("SUPABASE_SECRET_KEY", "").strip()
 SUPABASE_MEDIA_BUCKET = os.environ.get("SUPABASE_MEDIA_BUCKET", "community-media").strip()
 _supabase = None
+if STORAGE_BACKEND == "postgres" and not (SUPABASE_URL and SUPABASE_SECRET_KEY):
+    raise RuntimeError("PostgreSQL mode also requires SUPABASE_URL and SUPABASE_SECRET_KEY for persistent media.")
 if SUPABASE_URL and SUPABASE_SECRET_KEY:
     if create_client is None:
         raise RuntimeError("Install the supabase package to enable persistent media storage.")
