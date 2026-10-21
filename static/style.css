@@ -149,3 +149,20 @@ input:focus,textarea:focus,button:focus-visible,a:focus-visible,input:focus-visi
 .feature-card:nth-child(5n+4){background:linear-gradient(145deg,#fff8d8,#fff)}
 .feature-card:nth-child(5n){background:linear-gradient(145deg,#e5f2ff,#fff)}
 .closing-cta{border-color:#d8c4ff;background:linear-gradient(110deg,#eee5ff 0%,#ffe7f3 45%,#fff0d9 75%,#e7f3ff 100%)}
+
+
+/* Retain the existing dark-mode toggle as an alternative theme */
+html[data-theme="dark"]{
+  color-scheme:dark;
+  --bg:#151020;--panel:#211831;--panel2:#302044;--text:#fff8ff;--muted:#d0c1dc;
+  --gold:#c09aff;--gold2:#e0ccff;--line:#49335e;--danger:#ffb4c9;
+  --shadow:0 14px 34px #08020f55;
+}
+html[data-theme="dark"] body{background:radial-gradient(ellipse at 0% 0%,#38205b 0,transparent 32%),radial-gradient(ellipse at 100% 8%,#54203f 0,transparent 29%),var(--bg)}
+html[data-theme="dark"] .social-dashboard .social-topbar{background:#211831}
+html[data-theme="dark"] .social-search,html[data-theme="dark"] .shortcut-card,html[data-theme="dark"] .social-panel{background:var(--panel);color:var(--text)}
+html[data-theme="dark"] .social-search input,html[data-theme="dark"] .composer-panel textarea,html[data-theme="dark"] .social-reply-form input{background:var(--bg);color:var(--text)}
+html[data-theme="dark"] .social-nav-link{color:var(--muted)}
+html[data-theme="dark"] .social-nav-link.is-current{background:linear-gradient(100deg,#762eff,#b32dff);color:#fff}
+html[data-theme="dark"] .social-post-actions{background:linear-gradient(90deg,#302044,#40213b,#3b2d22)}
+html[data-theme="dark"] .social-mobile-nav{background:#211831f2}
