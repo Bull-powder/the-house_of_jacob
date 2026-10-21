@@ -78,3 +78,110 @@
 .social-mobile-nav{background:#fffF;border-color:#dfd0ff}
 .social-mobile-nav a.is-current{color:#762eff}
 .social-mobile-nav .mobile-create{background:linear-gradient(135deg,#762eff,#ff3e9d 52%,#ff8a35);color:#fff}
+
+
+/* House of Jacob palette correction: purple, pink, orange, yellow and blue.
+   Keep the existing layout and route behavior; only update presentation. */
+html[data-theme="light"] body.social-dashboard {
+  --bg: #f8f5ff;
+  --panel: #ffffff;
+  --panel2: #f0eaff;
+  --text: #29213d;
+  --muted: #716783;
+  --gold: #6d28d9;
+  --gold2: #7c3aed;
+  --line: #e5dcf6;
+  --danger: #b4234a;
+  --shadow: 0 16px 42px rgba(68, 35, 117, .10);
+  background:
+    radial-gradient(ellipse at 7% 0%, rgba(255, 62, 157, .12), transparent 32%),
+    radial-gradient(ellipse at 95% 4%, rgba(37, 137, 255, .10), transparent 30%),
+    var(--bg);
+}
+html[data-theme="dark"] body.social-dashboard {
+  --bg: #171124;
+  --panel: #211832;
+  --panel2: #302143;
+  --text: #fbf7ff;
+  --muted: #c3b5d4;
+  --gold: #d8b4fe;
+  --gold2: #e9d5ff;
+  --line: #49345f;
+  --danger: #ffb4c8;
+  --shadow: 0 18px 50px rgba(0, 0, 0, .25);
+  background:
+    radial-gradient(ellipse at 8% 0%, rgba(255, 62, 157, .13), transparent 33%),
+    radial-gradient(ellipse at 96% 5%, rgba(37, 137, 255, .12), transparent 30%),
+    var(--bg);
+}
+.social-dashboard .social-mark {
+  color: white;
+  background: linear-gradient(135deg, #6d28d9 5%, #ff3e9d 56%, #ff9b35 100%);
+}
+.social-dashboard .social-brand b,
+.social-dashboard .social-nav-link span,
+.social-dashboard .social-eyebrow,
+.social-dashboard .welcome-spark,
+.social-dashboard .composer-star,
+.social-dashboard .social-search > span {
+  color: #6d28d9;
+}
+html[data-theme="dark"] .social-dashboard .social-brand b,
+html[data-theme="dark"] .social-dashboard .social-nav-link span,
+html[data-theme="dark"] .social-dashboard .social-eyebrow,
+html[data-theme="dark"] .social-dashboard .welcome-spark,
+html[data-theme="dark"] .social-dashboard .composer-star,
+html[data-theme="dark"] .social-dashboard .social-search > span {
+  color: #e9d5ff;
+}
+.social-dashboard .btn-primary {
+  background: linear-gradient(110deg, #6d28d9, #ff3e9d);
+  color: #fff;
+  border-color: transparent;
+}
+.social-dashboard .social-welcome {
+  border-color: rgba(109, 40, 217, .25);
+  background: linear-gradient(112deg, rgba(109, 40, 217, .12), rgba(255, 62, 157, .10), rgba(37, 137, 255, .10));
+}
+.social-dashboard .social-sidebar-promo {
+  background: linear-gradient(145deg, #6d28d9, #ff3e9d 58%, #ff9b35);
+  color: #fff;
+}
+.social-dashboard .social-sidebar-promo p { color: #fff5fc; }
+.social-dashboard .social-sidebar-promo a {
+  background: #fff;
+  color: #6d28d9;
+}
+.social-dashboard .shortcut-card:nth-child(1) .shortcut-icon {
+  color: #6d28d9; background: rgba(109, 40, 217, .12);
+}
+.social-dashboard .shortcut-card:nth-child(2) .shortcut-icon {
+  color: #e51d86; background: rgba(255, 62, 157, .14);
+}
+.social-dashboard .shortcut-card:nth-child(3) .shortcut-icon {
+  color: #1672d4; background: rgba(37, 137, 255, .14);
+}
+.social-dashboard .upload-choice {
+  color: #6d28d9; background: rgba(109, 40, 217, .10);
+}
+.social-dashboard .social-nav-link.is-current {
+  background: rgba(109, 40, 217, .10);
+  box-shadow: inset 3px 0 #6d28d9;
+}
+.social-dashboard .top-square { color: #6d28d9; }
+.social-dashboard .social-post:nth-of-type(3n + 1) { border-top: 3px solid #ff3e9d; }
+.social-dashboard .social-post:nth-of-type(3n + 2) { border-top: 3px solid #ff9b35; }
+.social-dashboard .social-post:nth-of-type(3n) { border-top: 3px solid #2589ff; }
+.social-dashboard .social-panel,
+.social-dashboard .shortcut-card,
+.social-dashboard .social-search,
+.social-dashboard .top-square {
+  box-shadow: 0 8px 24px rgba(68, 35, 117, .05);
+}
+.social-dashboard a:focus-visible,
+.social-dashboard button:focus-visible,
+.social-dashboard input:focus-visible,
+.social-dashboard textarea:focus-visible {
+  outline: 3px solid #2589ff;
+  outline-offset: 2px;
+}
