@@ -166,3 +166,10 @@ html[data-theme="dark"] .social-nav-link{color:var(--muted)}
 html[data-theme="dark"] .social-nav-link.is-current{background:linear-gradient(100deg,#762eff,#b32dff);color:#fff}
 html[data-theme="dark"] .social-post-actions{background:linear-gradient(90deg,#302044,#40213b,#3b2d22)}
 html[data-theme="dark"] .social-mobile-nav{background:#211831f2}
+
+/* House of Jacob logo sizing */
+.site-logo{display:flex;align-items:center;gap:0;flex-shrink:0;max-width:min(360px,38vw)}
+.site-logo img{display:block;width:100%;max-width:340px;height:auto;max-height:76px;object-fit:contain;object-position:left center}
+.social-topbar .site-logo{max-width:310px}
+@media(max-width:900px){.site-logo{max-width:230px}.site-logo img{max-height:60px}.social-topbar .site-logo{max-width:220px}}
+@media(max-width:600px){.site-logo{max-width:170px}.site-logo img{max-height:48px}.social-topbar .site-logo{max-width:150px}}
