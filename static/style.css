@@ -115,3 +115,37 @@ footer{font-size:.88rem}
 @media(prefers-reduced-motion:reduce){
   *,*::before,*::after{scroll-behavior:auto!important;transition:none!important;animation:none!important}
 }
+
+
+/* House of Jacob rainbow colour system — bold blocks, light canvas */
+:root{
+  color-scheme:light;
+  --bg:#f8f5ff;--panel:#ffffff;--panel2:#f0e8ff;--text:#24143d;--muted:#6e6680;
+  --gold:#762eff;--gold2:#5520c9;--line:#e5d9ff;--danger:#b4235a;
+  --shadow:0 14px 34px #4d1ca512;
+  --hoj-purple:#762eff;--hoj-pink:#ff3e9d;--hoj-orange:#ff8a35;--hoj-yellow:#ffd43b;--hoj-blue:#2589ff;
+}
+html[data-theme="light"]{
+  color-scheme:light;
+  --bg:#f8f5ff;--panel:#ffffff;--panel2:#f0e8ff;--text:#24143d;--muted:#6e6680;
+  --gold:#762eff;--gold2:#5520c9;--line:#e5d9ff;--danger:#b4235a;
+  --shadow:0 14px 34px #4d1ca512;
+}
+body{background:radial-gradient(ellipse at 0% 0%,#e8ddff 0,transparent 32%),radial-gradient(ellipse at 100% 8%,#ffe0f0 0,transparent 29%),radial-gradient(ellipse at 52% 100%,#fff0bd 0,transparent 28%),var(--bg);color:var(--text)}
+a{color:#6525df}
+.crown,.feature-icon,.footer-crown{color:var(--hoj-purple)}
+.btn-primary{background:linear-gradient(110deg,var(--hoj-purple),var(--hoj-pink));color:#fff;border-color:transparent;box-shadow:0 7px 18px #762eff30}
+.btn-primary:hover{background:linear-gradient(110deg,#6120e9,#ed2489);border-color:transparent}
+.btn-quiet{border-color:#ded0ff;background:#fff;color:#5721bf}
+.panel,.card,article{border-color:#e8ddff}
+input:focus,textarea:focus,button:focus-visible,a:focus-visible,input:focus-visible,textarea:focus-visible{outline-color:var(--hoj-blue)}
+.flash{border-color:#ffb0d5;background:#fff0f7}
+.landing-hero .hero-copy h1 span,.feature-intro h2 span,.closing-cta h2 span{color:var(--hoj-pink)}
+.eyebrow-mark{background:#fff0b8;color:#8a5a00}
+.showcase-glow{background:radial-gradient(ellipse,#d8c5ff 0,transparent 68%)}
+.feature-card:nth-child(5n+1){background:linear-gradient(145deg,#f1e9ff,#fff)}
+.feature-card:nth-child(5n+2){background:linear-gradient(145deg,#ffe6f2,#fff)}
+.feature-card:nth-child(5n+3){background:linear-gradient(145deg,#fff0df,#fff)}
+.feature-card:nth-child(5n+4){background:linear-gradient(145deg,#fff8d8,#fff)}
+.feature-card:nth-child(5n){background:linear-gradient(145deg,#e5f2ff,#fff)}
+.closing-cta{border-color:#d8c4ff;background:linear-gradient(110deg,#eee5ff 0%,#ffe7f3 45%,#fff0d9 75%,#e7f3ff 100%)}
