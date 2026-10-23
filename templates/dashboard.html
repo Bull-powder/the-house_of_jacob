@@ -5,7 +5,7 @@
 <meta name="theme-color" content="#f8f5ff">
 <title>Community Feed | House of Jacob</title>
 <link rel="stylesheet" href="{{ url_for('static', filename='style.css', v='rainbow1') }}">
-<link rel="stylesheet" href="{{ url_for('static', filename='social-dashboard.css', v='rainbow2') }}">
+<link rel="stylesheet" href="{{ url_for('static', filename='social-dashboard.css', v='socialfeatures1') }}">
 <script defer src="{{ url_for('static', filename='site.js', v='b40f662') }}"></script>
 </head>
 <body class="social-dashboard">
@@ -48,7 +48,7 @@
       <a class="shortcut-card" href="{{ url_for('messages') }}"><span class="shortcut-icon">✉</span><span><b>Stay connected</b><small>Open your messages</small></span></a>
       <a class="shortcut-card" href="{{ url_for('calls') }}"><span class="shortcut-icon">☎</span><span><b>Talk face to face</b><small>Start a call room</small></span></a>
     </section>
-    {% if query and people %}<section class="panel social-panel search-people"><div class="social-section-heading"><h2>Members matching “{{ query }}”</h2><span>{{ people|length }} shown</span></div><div class="people-list">{% for person in people %}<div class="member-row">{% if person["profile_image"] %}<img class="avatar avatar-img" src="{{ media_url(person['profile_image']) }}" alt="Profile photo">{% else %}<div class="avatar">{{ person["display_name"][:1]|upper }}</div>{% endif %}<div class="member-copy"><strong>{{ person["display_name"] }}</strong><p>{{ person["bio"] or "House of Jacob member" }}</p></div><a class="btn btn-quiet" href="{{ url_for('messages',to=person['id']) }}">Message</a></div>{% endfor %}</div></section>{% endif %}
+    {% if query and people %}<section class="panel social-panel search-people"><div class="social-section-heading"><h2>Members matching “{{ query }}”</h2><span>{{ people|length }} shown</span></div><div class="people-list">{% for person in people %}<div class="member-row">{% if person["profile_image"] %}<img class="avatar avatar-img" src="{{ media_url(person['profile_image']) }}" alt="Profile photo">{% else %}<div class="avatar">{{ person["display_name"][:1]|upper }}</div>{% endif %}<div class="member-copy"><strong>{{ person["display_name"] }}</strong><p>{{ person["bio"] or "House of Jacob member" }}</p></div><a class="btn btn-quiet" href="{{ url_for('social.public_profile', person_id=person['id']) }}">View profile</a><a class="btn btn-quiet" href="{{ url_for('messages',to=person['id']) }}">Message</a></div>{% endfor %}</div></section>{% endif %}
     <section class="social-panel composer-panel" id="composer">
       <div class="social-section-heading"><div><p class="social-eyebrow">CREATE SOMETHING</p><h2>What’s on your mind?</h2></div><span class="composer-star">✧</span></div>
       <form method="POST" action="{{ url_for('create_post') }}" enctype="multipart/form-data">
