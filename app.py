@@ -73,7 +73,7 @@ ALLOWED_VIDEO_EXTENSIONS = {"mp4", "webm", "mov"}
 def save_upload(upload, folder, filename, content_type):
     """Store media in Cloudinary first, then Supabase, or locally for development."""
     if _cloudinary_enabled:
-        resource_type = "video" if content_type.startswith("video/") else "image"
+        resource_type = "video" if content_type.startswith(("video/", "audio/")) else "image"
         result = cloudinary.uploader.upload(
             upload.stream,
             resource_type=resource_type,
@@ -320,7 +320,7 @@ def dashboard():
             where = "WHERE posts.content LIKE ? OR users.display_name LIKE ?"
             params.extend(["%" + query + "%", "%" + query + "%"])
         rows = db.execute("""
-            SELECT posts.id, posts.user_id, posts.content, posts.media_path, posts.media_type, posts.created_at, users.display_name, users.profile_image,
+            SELECT posts.id, posts.user_id, posts.content, posts.media_path, posts.media_type, posts.music_path, posts.music_title, posts.created_at, users.display_name, users.profile_image,
             (SELECT COUNT(*) FROM comments c WHERE c.post_id=posts.id) AS comment_count,
             (SELECT COUNT(*) FROM reactions r WHERE r.post_id=posts.id) AS reaction_count,
             (SELECT reaction FROM reactions r WHERE r.post_id=posts.id AND r.user_id=?) AS my_reaction
@@ -516,6 +516,9 @@ def logout():
     flash("You have signed out.")
     return redirect(url_for("index"))
 
+
+from social_features import register_social_features
+register_social_features(app, get_db, login_required, save_upload, media_url)
 
 init_db()
 
