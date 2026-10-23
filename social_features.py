@@ -5,6 +5,9 @@ from pathlib import Path
 import mimetypes
 import uuid
 import os
+import json
+from urllib.parse import urlencode, urlparse
+from urllib.request import Request, urlopen
 
 social = Blueprint("social", __name__)
 _SCHEMA_READY = False
@@ -205,6 +208,56 @@ def register_social_features(app, get_db, login_required, save_upload, media_url
                 return redirect(url_for("dashboard") + "#post-" + str(post_id))
         flash("Music added to your post.")
         return redirect(url_for("dashboard") + "#post-" + str(post_id))
+
+
+    @social.route("/posts/<int:post_id>/music/search", methods=["GET", "POST"])
+    @login_required
+    def search_online_music(post_id):
+        with get_db() as db:
+            post = db.execute("SELECT id,user_id FROM posts WHERE id=?", (post_id,)).fetchone()
+            if not post:
+                abort(404)
+            if post["user_id"] != session["user_id"]:
+                abort(403)
+
+        if request.method == "POST":
+            preview_url = request.form.get("preview_url", "").strip()
+            title = request.form.get("track_title", "").strip()[:120]
+            parsed = urlparse(preview_url)
+            allowed_hosts = {"audio-ssl.itunes.apple.com", "audio.itunes.apple.com"}
+            if parsed.scheme != "https" or parsed.hostname not in allowed_hosts or not title:
+                flash("Please choose a valid song preview from the online search results.")
+                return redirect(url_for("social.search_online_music", post_id=post_id))
+            with get_db() as db:
+                db.execute("UPDATE posts SET music_path=?, music_title=? WHERE id=? AND user_id=?",
+                           (preview_url, title, post_id, session["user_id"]))
+            flash("Online song preview added to your post.")
+            return redirect(url_for("dashboard") + "#post-" + str(post_id))
+
+        query = request.args.get("q", "").strip()[:100]
+        tracks = []
+        error = ""
+        if query:
+            try:
+                params = urlencode({"term": query, "media": "music", "entity": "song", "limit": 15, "country": "KE"})
+                req = Request("https://itunes.apple.com/search?" + params, headers={"User-Agent": "HouseOfJacob/1.0"})
+                with urlopen(req, timeout=8) as response:
+                    payload = json.loads(response.read().decode("utf-8"))
+                for item in payload.get("results", []):
+                    preview = item.get("previewUrl", "")
+                    host = urlparse(preview).hostname if preview else None
+                    if preview and host in {"audio-ssl.itunes.apple.com", "audio.itunes.apple.com"}:
+                        tracks.append({
+                            "title": item.get("trackName", "Unknown track"),
+                            "artist": item.get("artistName", "Unknown artist"),
+                            "preview_url": preview,
+                            "artwork": item.get("artworkUrl100", ""),
+                            "store_url": item.get("trackViewUrl", "")
+                        })
+            except Exception:
+                app.logger.exception("Online music search failed")
+                error = "Online music search is temporarily unavailable. Please try again later."
+        return render_template("online_music.html", post_id=post_id, query=query, tracks=tracks, error=error)
 
     @social.route("/settings", methods=["GET", "POST"])
     @login_required
