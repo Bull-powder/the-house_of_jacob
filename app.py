@@ -73,7 +73,7 @@ ALLOWED_VIDEO_EXTENSIONS = {"mp4", "webm", "mov"}
 def save_upload(upload, folder, filename, content_type):
     """Store media in Cloudinary first, then Supabase, or locally for development."""
     if _cloudinary_enabled:
-        resource_type = "video" if content_type.startswith("video/") else "image"
+        resource_type = "video" if content_type.startswith(("video/", "audio/")) else "image"
         result = cloudinary.uploader.upload(
             upload.stream,
             resource_type=resource_type,
@@ -516,6 +516,9 @@ def logout():
     flash("You have signed out.")
     return redirect(url_for("index"))
 
+
+from social_features import register_social_features
+register_social_features(app, get_db, login_required, save_upload, media_url)
 
 init_db()
 
