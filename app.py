@@ -320,7 +320,7 @@ def dashboard():
             where = "WHERE posts.content LIKE ? OR users.display_name LIKE ?"
             params.extend(["%" + query + "%", "%" + query + "%"])
         rows = db.execute("""
-            SELECT posts.id, posts.user_id, posts.content, posts.media_path, posts.media_type, posts.created_at, users.display_name, users.profile_image,
+            SELECT posts.id, posts.user_id, posts.content, posts.media_path, posts.media_type, posts.music_path, posts.music_title, posts.created_at, users.display_name, users.profile_image,
             (SELECT COUNT(*) FROM comments c WHERE c.post_id=posts.id) AS comment_count,
             (SELECT COUNT(*) FROM reactions r WHERE r.post_id=posts.id) AS reaction_count,
             (SELECT reaction FROM reactions r WHERE r.post_id=posts.id AND r.user_id=?) AS my_reaction
