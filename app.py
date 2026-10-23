@@ -10,6 +10,12 @@ try:
 except ImportError:
     create_client = None
 
+try:
+    import cloudinary
+    import cloudinary.uploader
+except ImportError:
+    cloudinary = None
+
 # PostgreSQL is opt-in so adding DATABASE_URL to Render cannot silently switch
 # the live site to an empty database. Keep SQLite as the default until data is
 # deliberately migrated and HOUSE_OF_JACOB_STORAGE=postgres is set.
@@ -38,10 +44,25 @@ UPLOAD_DIR = Path(os.environ.get("HOUSE_OF_JACOB_UPLOAD_DIR", str(BASE_DIR / "st
 SUPABASE_URL = os.environ.get("SUPABASE_URL", "").strip()
 SUPABASE_SECRET_KEY = os.environ.get("SUPABASE_SECRET_KEY", "").strip()
 SUPABASE_MEDIA_BUCKET = os.environ.get("SUPABASE_MEDIA_BUCKET", "community-media").strip()
+CLOUDINARY_CLOUD_NAME = os.environ.get("CLOUDINARY_CLOUD_NAME", "").strip()
+CLOUDINARY_API_KEY = os.environ.get("CLOUDINARY_API_KEY", "").strip()
+CLOUDINARY_API_SECRET = os.environ.get("CLOUDINARY_API_SECRET", "").strip()
+_cloudinary_enabled = bool(CLOUDINARY_CLOUD_NAME and CLOUDINARY_API_KEY and CLOUDINARY_API_SECRET)
 _supabase = None
-if STORAGE_BACKEND == "postgres" and not (SUPABASE_URL and SUPABASE_SECRET_KEY):
-    raise RuntimeError("PostgreSQL mode also requires SUPABASE_URL and SUPABASE_SECRET_KEY for persistent media.")
-if SUPABASE_URL and SUPABASE_SECRET_KEY:
+
+if _cloudinary_enabled:
+    if cloudinary is None:
+        raise RuntimeError("Install the cloudinary package to enable Cloudinary media storage.")
+    cloudinary.config(
+        cloud_name=CLOUDINARY_CLOUD_NAME,
+        api_key=CLOUDINARY_API_KEY,
+        api_secret=CLOUDINARY_API_SECRET,
+        secure=True,
+    )
+elif STORAGE_BACKEND == "postgres" and not (SUPABASE_URL and SUPABASE_SECRET_KEY):
+    raise RuntimeError("PostgreSQL mode requires Cloudinary credentials or SUPABASE_URL and SUPABASE_SECRET_KEY for persistent media.")
+
+if not _cloudinary_enabled and SUPABASE_URL and SUPABASE_SECRET_KEY:
     if create_client is None:
         raise RuntimeError("Install the supabase package to enable persistent media storage.")
     _supabase = create_client(SUPABASE_URL, SUPABASE_SECRET_KEY)
@@ -50,7 +71,21 @@ ALLOWED_VIDEO_EXTENSIONS = {"mp4", "webm", "mov"}
 
 
 def save_upload(upload, folder, filename, content_type):
-    """Store uploads in Supabase Storage when configured, otherwise locally for development."""
+    """Store media in Cloudinary first, then Supabase, or locally for development."""
+    if _cloudinary_enabled:
+        resource_type = "video" if content_type.startswith("video/") else "image"
+        result = cloudinary.uploader.upload(
+            upload.stream,
+            resource_type=resource_type,
+            folder=folder,
+            public_id=Path(filename).stem,
+            unique_filename=True,
+            overwrite=False,
+        )
+        url = result.get("secure_url") or result.get("url")
+        if not url:
+            raise RuntimeError("Cloudinary upload returned no media URL.")
+        return url
     if _supabase:
         object_path = f"{folder}/{filename}"
         _supabase.storage.from_(SUPABASE_MEDIA_BUCKET).upload(
