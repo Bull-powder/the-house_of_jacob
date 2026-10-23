@@ -1,0 +1,49 @@
+<!DOCTYPE html>
+<html lang="en" data-theme="light">
+<head>
+<meta charset="UTF-8"><meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Find music online · House of Jacob</title>
+<link rel="stylesheet" href="{{ url_for('static', filename='style.css', v='rainbow1') }}">
+<link rel="stylesheet" href="{{ url_for('static', filename='social-dashboard.css', v='socialfeatures2') }}">
+</head>
+<body class="social-dashboard">
+<header class="topbar social-topbar">
+  <a class="brand site-logo" href="{{ url_for('dashboard') }}"><img src="{{ url_for('static', filename='house-of-jacob-logo.svg') }}" alt="House of Jacob"></a>
+  <a class="btn btn-quiet" href="{{ url_for('dashboard') }}#post-{{ post_id }}">← Back to post</a>
+</header>
+<main class="feature-page">
+  <section class="social-panel composer-panel">
+    <p class="social-eyebrow">YOUR POST SOUNDTRACK</p>
+    <h1>Find music online</h1>
+    <p>Search song previews available through Apple’s iTunes catalog, listen first, then attach a preview to your post. Preview availability varies by song and region.</p>
+    <form method="GET" action="{{ url_for('social.search_online_music', post_id=post_id) }}" class="online-music-search">
+      <label for="music-query">Song or artist</label>
+      <div class="online-music-search-row"><input id="music-query" name="q" value="{{ query }}" maxlength="100" placeholder="e.g. Sauti Sol, Afrobeat…" required><button class="btn btn-primary" type="submit">Search songs</button></div>
+    </form>
+    {% if error %}<p class="flash">{{ error }}</p>{% endif %}
+  </section>
+  {% if query and not tracks and not error %}
+  <section class="social-panel social-empty"><h2>No previews found</h2><p>Try another song title or artist. You can still upload an audio file from your device on the post.</p></section>
+  {% endif %}
+  {% if tracks %}
+  <section class="online-music-results">
+    <div class="social-section-heading"><h2>Results for “{{ query }}”</h2><span class="feed-label">{{ tracks|length }} tracks</span></div>
+    {% for track in tracks %}
+    <article class="social-panel online-track">
+      {% if track.artwork %}<img class="online-track-art" src="{{ track.artwork }}" alt="" loading="lazy">{% else %}<div class="online-track-art online-track-placeholder">♫</div>{% endif %}
+      <div class="online-track-details"><h3>{{ track.title }}</h3><p>{{ track.artist }}</p><audio controls preload="none" src="{{ track.preview_url }}"></audio>
+        <form method="POST" action="{{ url_for('social.search_online_music', post_id=post_id) }}">
+          <input type="hidden" name="preview_url" value="{{ track.preview_url }}">
+          <input type="hidden" name="track_title" value="{{ track.title }} — {{ track.artist }}">
+          <button class="btn btn-primary" type="submit">Add preview to post</button>
+          {% if track.store_url %}<a class="btn btn-quiet" href="{{ track.store_url }}" target="_blank" rel="noopener noreferrer">Open music store</a>{% endif %}
+        </form>
+      </div>
+    </article>
+    {% endfor %}
+    <p class="muted">Online results and preview playback are provided by Apple’s iTunes catalog. This attaches a preview, not a full song download.</p>
+  </section>
+  {% endif %}
+</main>
+</body>
+</html>
