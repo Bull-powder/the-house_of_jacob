@@ -2,3 +2,4 @@ flask
 gunicorn
 psycopg[binary]>=3.2,<4
 supabase>=2.0,<3
+cloudinary>=1.40,<2
