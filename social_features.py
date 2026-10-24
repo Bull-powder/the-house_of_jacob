@@ -374,7 +374,8 @@ def register_social_features(app, get_db, login_required, save_upload, media_url
     def livekit_api_call(operation):
         from livekit import api
         async def run():
-            client = api.LiveKitAPI(os.environ["LIVEKIT_URL"].strip(),
+            api_url = os.environ["LIVEKIT_URL"].strip().replace("wss://", "https://", 1).replace("ws://", "http://", 1)
+            client = api.LiveKitAPI(api_url,
                 api_key=os.environ["LIVEKIT_API_KEY"].strip(),
                 api_secret=os.environ["LIVEKIT_API_SECRET"].strip())
             try:
