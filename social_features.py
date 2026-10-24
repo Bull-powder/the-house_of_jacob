@@ -43,6 +43,8 @@ def register_social_features(app, get_db, login_required, save_upload, media_url
                     expires_at TIMESTAMP NOT NULL)""")
                 db.execute("CREATE INDEX IF NOT EXISTS idx_stories_expiry ON stories(expires_at)")
                 db.execute("CREATE INDEX IF NOT EXISTS idx_follows_followed ON follows(followed_id)")
+                db.execute("""ALTER TABLE stories ADD COLUMN IF NOT EXISTS music_path TEXT NOT NULL DEFAULT ''""")
+                db.execute("""ALTER TABLE stories ADD COLUMN IF NOT EXISTS music_title TEXT NOT NULL DEFAULT ''""")
             else:
                 columns = {row["name"] for row in db.execute("PRAGMA table_info(posts)").fetchall()}
                 if "music_path" not in columns:
@@ -65,6 +67,11 @@ def register_social_features(app, get_db, login_required, save_upload, media_url
                     expires_at TIMESTAMP NOT NULL)""")
                 db.execute("CREATE INDEX IF NOT EXISTS idx_stories_expiry ON stories(expires_at)")
                 db.execute("CREATE INDEX IF NOT EXISTS idx_follows_followed ON follows(followed_id)")
+                story_columns = {row["name"] for row in db.execute("PRAGMA table_info(stories)").fetchall()}
+                if "music_path" not in story_columns:
+                    db.execute("ALTER TABLE stories ADD COLUMN music_path TEXT NOT NULL DEFAULT ''")
+                if "music_title" not in story_columns:
+                    db.execute("ALTER TABLE stories ADD COLUMN music_title TEXT NOT NULL DEFAULT ''")
         _SCHEMA_READY = True
 
     @app.before_request
@@ -80,7 +87,7 @@ def register_social_features(app, get_db, login_required, save_upload, media_url
         try:
             with get_db() as db:
                 data["stories"] = [dict(row) for row in db.execute("""
-                    SELECT s.id, s.user_id, s.media_path, s.media_type, s.caption, s.created_at,
+                    SELECT s.id, s.user_id, s.media_path, s.media_type, s.caption, s.music_path, s.music_title, s.created_at,
                            u.display_name, u.profile_image
                     FROM stories s JOIN users u ON u.id=s.user_id
                     WHERE s.expires_at > CURRENT_TIMESTAMP
@@ -108,14 +115,38 @@ def register_social_features(app, get_db, login_required, save_upload, media_url
             flash("Stories support PNG, JPG, GIF, WEBP, MP4, WEBM, or MOV.")
             return redirect(url_for("dashboard"))
         media_type = "video" if ext in {"mp4", "webm", "mov"} else "image"
+        music_upload = request.files.get("story_music")
+        online_preview = request.form.get("story_music_url", "").strip()
+        music_title = request.form.get("story_music_title", "").strip()[:120]
+        music_path = ""
+        if online_preview:
+            parsed = urlparse(online_preview)
+            if parsed.scheme != "https" or parsed.hostname not in {"audio-ssl.itunes.apple.com", "audio.itunes.apple.com"}:
+                flash("Choose a valid online song preview from the music catalog.")
+                return redirect(url_for("dashboard") + "#stories")
+            music_path = online_preview
+        elif music_upload and music_upload.filename:
+            music_safe = secure_filename(music_upload.filename)
+            music_ext = music_safe.rsplit(".", 1)[-1].lower() if "." in music_safe else ""
+            if music_ext not in _AUDIO_EXTENSIONS:
+                flash("Story music must be MP3, M4A, WAV, OGG, AAC, or WEBM.")
+                return redirect(url_for("dashboard") + "#stories")
+            try:
+                music_path = save_upload(music_upload, "story-music", uuid.uuid4().hex + "." + music_ext,
+                                         mimetypes.guess_type(music_safe)[0] or "audio/mpeg")
+                music_title = music_title or Path(music_safe).stem
+            except Exception:
+                app.logger.exception("Story music upload failed")
+                flash("Story music could not be uploaded.")
+                return redirect(url_for("dashboard") + "#stories")
         stored_name = uuid.uuid4().hex + "." + ext
         content_type = mimetypes.guess_type(safe)[0] or ("video/mp4" if media_type == "video" else "image/jpeg")
         try:
             media_path = save_upload(upload, "stories", stored_name, content_type)
             with get_db() as db:
                 db.execute(
-                    "INSERT INTO stories (user_id,media_path,media_type,caption,expires_at) VALUES (?,?,?,?,?)",
-                    (session["user_id"], media_path, media_type, caption, datetime.utcnow() + timedelta(hours=24))
+                    "INSERT INTO stories (user_id,media_path,media_type,caption,music_path,music_title,expires_at) VALUES (?,?,?,?,?,?,?)",
+                    (session["user_id"], media_path, media_type, caption, music_path, music_title, datetime.utcnow() + timedelta(hours=24))
                 )
             flash("Your story is live for 24 hours.")
         except Exception:
@@ -135,7 +166,7 @@ def register_social_features(app, get_db, login_required, save_upload, media_url
         if not story:
             flash("That story has expired or is no longer available.")
             return redirect(url_for("dashboard"))
-        return render_template("story.html", story=story)
+        return render_template("story.html", story=story, media_url=media_url)
 
     @social.route("/people/<int:person_id>")
     @login_required
@@ -294,5 +325,50 @@ def register_social_features(app, get_db, login_required, save_upload, media_url
         with get_db() as db:
             user = db.execute("SELECT id,display_name,email,bio,interests,profile_image,created_at FROM users WHERE id=?", (session["user_id"],)).fetchone()
         return render_template("profile_settings.html", user=user, media_url=media_url)
+
+
+    @social.route("/community-rules")
+    @login_required
+    def community_rules():
+        return render_template("community_rules.html")
+
+    @social.route("/verification", methods=["GET", "POST"])
+    @login_required
+    def verification_request():
+        with get_db() as db:
+            if is_postgres:
+                db.execute("""CREATE TABLE IF NOT EXISTS verification_requests (
+                    id BIGSERIAL PRIMARY KEY, user_id BIGINT NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+                    public_links TEXT NOT NULL, reason TEXT NOT NULL, status TEXT NOT NULL DEFAULT 'pending',
+                    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP, reviewed_at TIMESTAMP)""")
+            else:
+                db.execute("""CREATE TABLE IF NOT EXISTS verification_requests (
+                    id INTEGER PRIMARY KEY AUTOINCREMENT, user_id INTEGER NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+                    public_links TEXT NOT NULL, reason TEXT NOT NULL, status TEXT NOT NULL DEFAULT 'pending',
+                    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP, reviewed_at TIMESTAMP)""")
+            current = db.execute("SELECT id,status,created_at FROM verification_requests WHERE user_id=? ORDER BY id DESC LIMIT 1",
+                                 (session["user_id"],)).fetchone()
+            if request.method == "POST":
+                if current and current["status"] == "pending":
+                    flash("Your verification request is already waiting for review.")
+                    return redirect(url_for("social.verification_request"))
+                public_links = request.form.get("public_links", "").strip()[:1200]
+                reason = request.form.get("reason", "").strip()[:1000]
+                if not public_links or not reason:
+                    flash("Add public links and explain why the account should be verified.")
+                    return redirect(url_for("social.verification_request"))
+                db.execute("INSERT INTO verification_requests (user_id,public_links,reason,status) VALUES (?,?,?,'pending')",
+                           (session["user_id"], public_links, reason))
+                flash("Verification request submitted. A moderator must review it before any badge is shown.")
+                return redirect(url_for("social.verification_request"))
+        return render_template("verification.html", current=current)
+
+    @social.route("/live")
+    @login_required
+    def live_access():
+        with get_db() as db:
+            row = db.execute("SELECT COUNT(*) AS n FROM follows WHERE followed_id=?", (session["user_id"],)).fetchone()
+        eligible = row["n"] >= 1000
+        return render_template("live_access.html", eligible=eligible, followers=row["n"])
 
     app.register_blueprint(social)
