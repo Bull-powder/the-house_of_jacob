@@ -5,7 +5,7 @@
 <meta name="theme-color" content="#f8f5ff">
 <title>Community Feed | House of Jacob</title>
 <link rel="stylesheet" href="{{ url_for('static', filename='style.css', v='rainbow1') }}">
-<link rel="stylesheet" href="{{ url_for('static', filename='social-dashboard.css', v='follow1') }}">
+<link rel="stylesheet" href="{{ url_for('static', filename='social-dashboard.css', v='special3') }}">
 <script defer src="{{ url_for('static', filename='site.js', v='b40f662') }}"></script>
 </head>
 <body class="social-dashboard">
@@ -79,6 +79,7 @@
     <footer class="social-footer">About · Community Guidelines · Privacy<br>© 2026 House of Jacob</footer>
   </aside>
 </div>
+<dialog class="post-lightbox" id="post-lightbox" aria-label="Expanded post image"><button type="button" class="post-lightbox-close" aria-label="Close image">✕</button><img alt="Expanded community post image"></dialog>
 <nav class="social-mobile-nav" aria-label="Mobile navigation"><a class="is-current" href="{{ url_for('dashboard') }}"><span>⌂</span>Home</a><a href="#community-feed"><span>⌕</span>Explore</a><a class="mobile-create" href="#composer" aria-label="Create post"><span>＋</span></a><a href="{{ url_for('messages') }}"><span>✉</span>Messages</a><a href="#profile-card"><span>♙</span>Profile</a></nav>
 <script>
 (function(){
@@ -132,4 +133,5 @@
  }
  bindSongSearch('post');bindSongSearch('story');
 })();
-</script></body></html>
+</script><script>(function(){const dialog=document.getElementById('post-lightbox');if(!dialog)return;const image=dialog.querySelector('img');document.querySelectorAll('.social-post img.social-post-media').forEach(source=>{source.setAttribute('tabindex','0');source.setAttribute('role','button');source.setAttribute('aria-label','Open image in full screen');const open=()=>{image.src=source.currentSrc||source.src;image.alt=source.alt||'Expanded community post image';dialog.showModal();};source.addEventListener('click',open);source.addEventListener('keydown',event=>{if(event.key==='Enter'||event.key===' '){event.preventDefault();open();}});});dialog.querySelector('.post-lightbox-close').addEventListener('click',()=>dialog.close());dialog.addEventListener('click',event=>{if(event.target===dialog)dialog.close();});dialog.addEventListener('close',()=>{image.removeAttribute('src');});})();</script>
+</body></html>

@@ -189,6 +189,9 @@ def init_db():
         with get_db() as db:
             for statement in schema:
                 db.execute(statement)
+            # Add optional media fields safely to existing conversations.
+            db.execute("ALTER TABLE direct_messages ADD COLUMN IF NOT EXISTS media_path TEXT NOT NULL DEFAULT ''")
+            db.execute("ALTER TABLE direct_messages ADD COLUMN IF NOT EXISTS media_type TEXT NOT NULL DEFAULT ''")
         return
 
     DB_PATH.parent.mkdir(parents=True, exist_ok=True)
@@ -227,6 +230,9 @@ def init_db():
                 FOREIGN KEY (recipient_id) REFERENCES users(id) ON DELETE CASCADE
             )
         """)
+        dm_columns = {row["name"] for row in db.execute("PRAGMA table_info(direct_messages)")}
+        if "media_path" not in dm_columns: db.execute("ALTER TABLE direct_messages ADD COLUMN media_path TEXT NOT NULL DEFAULT ''")
+        if "media_type" not in dm_columns: db.execute("ALTER TABLE direct_messages ADD COLUMN media_type TEXT NOT NULL DEFAULT ''")
         user_columns = {row["name"] for row in db.execute("PRAGMA table_info(users)")}
         if "profile_image" not in user_columns: db.execute("ALTER TABLE users ADD COLUMN profile_image TEXT NOT NULL DEFAULT ''")
         post_columns = {row["name"] for row in db.execute("PRAGMA table_info(posts)")}
@@ -487,7 +493,7 @@ def messages():
             if selected:
                 conversation = db.execute(
                     """
-                    SELECT dm.id, dm.sender_id, dm.recipient_id, dm.body, dm.created_at,
+                    SELECT dm.id, dm.sender_id, dm.recipient_id, dm.body, dm.media_path, dm.media_type, dm.created_at,
                            sender.display_name AS sender_name
                     FROM direct_messages dm
                     JOIN users sender ON sender.id = dm.sender_id
@@ -506,20 +512,37 @@ def messages():
 def send_message():
     recipient_id = request.form.get("recipient_id", type=int)
     body = request.form.get("body", "").strip()
-    if not recipient_id or not body:
-        flash("Choose a person and enter a message.")
-        return redirect(url_for("messages"))
+    upload = request.files.get("message_media")
+    if not recipient_id or (not body and (not upload or not upload.filename)):
+        flash("Write a message or attach a photo/video.")
+        return redirect(url_for("messages", to=recipient_id) if recipient_id else url_for("messages"))
     if len(body) > 4000:
         flash("Messages must be 4000 characters or fewer.")
         return redirect(url_for("messages", to=recipient_id))
+    media_path, media_type = "", ""
+    if upload and upload.filename:
+        safe = secure_filename(upload.filename)
+        ext = safe.rsplit(".", 1)[-1].lower() if "." in safe else ""
+        if ext not in ALLOWED_IMAGE_EXTENSIONS | ALLOWED_VIDEO_EXTENSIONS:
+            flash("Messages support PNG, JPG, GIF, WEBP, MP4, WEBM, or MOV files.")
+            return redirect(url_for("messages", to=recipient_id))
+        media_type = "video" if ext in ALLOWED_VIDEO_EXTENSIONS else "image"
+        try:
+            stored_name = uuid.uuid4().hex + "." + ext
+            content_type = mimetypes.guess_type(safe)[0] or ("video/mp4" if media_type == "video" else "image/jpeg")
+            media_path = save_upload(upload, "messages", stored_name, content_type)
+        except Exception:
+            app.logger.exception("Direct message media upload failed")
+            flash("The attachment could not be uploaded. Please try again.")
+            return redirect(url_for("messages", to=recipient_id))
     with get_db() as db:
         recipient = db.execute("SELECT id FROM users WHERE id = ?", (recipient_id,)).fetchone()
         if not recipient or recipient_id == session["user_id"]:
             flash("That member is not available.")
             return redirect(url_for("messages"))
         db.execute(
-            "INSERT INTO direct_messages (sender_id, recipient_id, body) VALUES (?, ?, ?)",
-            (session["user_id"], recipient_id, body)
+            "INSERT INTO direct_messages (sender_id, recipient_id, body, media_path, media_type) VALUES (?, ?, ?, ?, ?)",
+            (session["user_id"], recipient_id, body, media_path, media_type)
         )
     return redirect(url_for("messages", to=recipient_id))
 
