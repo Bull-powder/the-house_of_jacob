@@ -314,6 +314,7 @@ def dashboard():
     query = request.args.get("q", "").strip()[:100]
     with get_db() as db:
         user = db.execute("SELECT id, display_name, email, bio, interests, profile_image, created_at FROM users WHERE id = ?", (session["user_id"],)).fetchone()
+        following_ids = {row["followed_id"] for row in db.execute("SELECT followed_id FROM follows WHERE follower_id=?", (session["user_id"],)).fetchall()}
         params = [session["user_id"]]
         where = ""
         if query:
@@ -338,7 +339,7 @@ def dashboard():
             posts.append(item)
     if user is None:
         session.clear(); flash("Please sign in again."); return redirect(url_for("login"))
-    return render_template("dashboard.html", user=user, posts=posts, query=query, people=people)
+    return render_template("dashboard.html", user=user, posts=posts, query=query, people=people, following_ids=following_ids)
 
 
 @app.route("/create-post", methods=["POST"])
