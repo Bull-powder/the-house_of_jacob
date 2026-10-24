@@ -346,29 +346,52 @@ def dashboard():
 def create_post():
     content = request.form.get("content", "").strip()
     upload = request.files.get("media")
-    media_path, media_type = "", ""
-    if not content and (not upload or not upload.filename):
-        flash("Add text or choose a photo/video."); return redirect(url_for("dashboard"))
+    music_upload = request.files.get("music_file")
+    music_url = request.form.get("music_url", "").strip()
+    music_title = request.form.get("music_title", "").strip()[:120]
+    media_path, media_type, music_path = "", "", ""
+    if not content and (not upload or not upload.filename) and (not music_upload or not music_upload.filename) and not music_url:
+        flash("Add a caption, photo/video, or music to your post."); return redirect(url_for("dashboard"))
     if len(content) > 2000:
         flash("Your post must be 2000 characters or fewer."); return redirect(url_for("dashboard"))
+    if music_url:
+        from urllib.parse import urlparse
+        parsed_music = urlparse(music_url)
+        if parsed_music.scheme != "https" or parsed_music.hostname not in {"audio-ssl.itunes.apple.com", "audio.itunes.apple.com"}:
+            flash("Choose a valid online music preview from the House of Jacob music search."); return redirect(url_for("dashboard"))
+        music_path = music_url
+        music_title = music_title or "Online song preview"
+    elif music_upload and music_upload.filename:
+        safe_music = secure_filename(music_upload.filename)
+        music_ext = safe_music.rsplit(".", 1)[-1].lower() if "." in safe_music else ""
+        if music_ext not in {"mp3", "m4a", "wav", "ogg", "aac", "webm"}:
+            flash("Music must be MP3, M4A, WAV, OGG, AAC, or WEBM."); return redirect(url_for("dashboard"))
+        try:
+            music_path = save_upload(music_upload, "music", uuid.uuid4().hex + "." + music_ext,
+                                     mimetypes.guess_type(safe_music)[0] or "audio/mpeg")
+            music_title = music_title or Path(safe_music).stem
+        except Exception:
+            app.logger.exception("Post music upload failed")
+            flash("Music could not be uploaded. Please try a smaller audio file."); return redirect(url_for("dashboard"))
     if upload and upload.filename:
         safe = secure_filename(upload.filename)
-        ext = safe.rsplit(".",1)[-1].lower() if "." in safe else ""
+        ext = safe.rsplit(".", 1)[-1].lower() if "." in safe else ""
         if ext in ALLOWED_IMAGE_EXTENSIONS: media_type = "image"
         elif ext in ALLOWED_VIDEO_EXTENSIONS: media_type = "video"
         else:
             flash("Use PNG, JPG, GIF, WEBP images or MP4, WEBM, MOV videos."); return redirect(url_for("dashboard"))
-        media_path = uuid.uuid4().hex + "." + ext
+        media_name = uuid.uuid4().hex + "." + ext
         content_type = mimetypes.guess_type(safe)[0] or ("video/mp4" if media_type == "video" else "application/octet-stream")
         try:
-            media_path = save_upload(upload, "posts", media_path, content_type)
+            media_path = save_upload(upload, "posts", media_name, content_type)
         except Exception:
             app.logger.exception("Post media upload failed")
             flash("The media upload failed. Please try again.")
             return redirect(url_for("dashboard"))
     with get_db() as db:
-        db.execute("INSERT INTO posts (user_id,content,media_path,media_type) VALUES (?,?,?,?)", (session["user_id"],content,media_path,media_type))
-    flash("Your post was published."); return redirect(url_for("dashboard"))
+        db.execute("INSERT INTO posts (user_id,content,media_path,media_type,music_path,music_title) VALUES (?,?,?,?,?,?)",
+                   (session["user_id"],content,media_path,media_type,music_path,music_title))
+    flash("Your post was published with its media and soundtrack."); return redirect(url_for("dashboard"))
 
 
 @app.route("/profile", methods=["POST"])
