@@ -368,8 +368,12 @@ def register_social_features(app, get_db, login_required, save_upload, media_url
                 return redirect(url_for("social.verification_request"))
         return render_template("verification.html", current=current)
 
+    def livekit_env_status():
+        # Log presence only; never log credential values.
+        return {key: bool(os.environ.get(key, "").strip()) for key in ("LIVEKIT_URL", "LIVEKIT_API_KEY", "LIVEKIT_API_SECRET")}
+
     def livekit_configured():
-        return all(os.environ.get(key, "").strip() for key in ("LIVEKIT_URL", "LIVEKIT_API_KEY", "LIVEKIT_API_SECRET"))
+        return all(livekit_env_status().values())
 
     def livekit_api_call(operation):
         from livekit import api
@@ -437,6 +441,8 @@ def register_social_features(app, get_db, login_required, save_upload, media_url
     @social.route("/live", methods=["GET"])
     @login_required
     def live_access():
+        env_status = livekit_env_status()
+        app.logger.warning("LiveKit environment variable presence (values hidden): %s", env_status)
         room_name = request.args.get("room", "").strip()
         live_room = get_live_room(room_name) if room_name else None
         if room_name and not live_room:
