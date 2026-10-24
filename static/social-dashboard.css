@@ -462,3 +462,113 @@ body.social-dashboard .story-viewer{border-radius:24px;border:3px solid transpar
  body.social-dashboard .messages-history{padding:10px}
  body.social-dashboard .messages-history .bubble{max-width:95%}
 }
+
+
+/* Layout redesign: turn the existing dashboard into a modern social workspace. */
+html[data-theme="light"] body.social-dashboard{
+  background:#faf8ff;
+  background-image:radial-gradient(ellipse at 20% 0%,#eee4ff 0,transparent 34%),radial-gradient(ellipse at 100% 15%,#ffe7f2 0,transparent 27%);
+}
+body.social-dashboard .social-topbar{
+  position:sticky;top:0;z-index:30;min-height:76px;padding:10px 24px;gap:20px;
+  background:rgba(255,255,255,.94);backdrop-filter:blur(18px);
+  border-bottom:3px solid transparent;border-image:linear-gradient(90deg,#762eff,#ff3e9d,#ff8a35,#ffd43b,#2589ff) 1;
+}
+body.social-dashboard .social-topbar .site-logo{display:flex;align-items:center;flex:0 0 170px;max-width:170px}
+body.social-dashboard .social-topbar .site-logo img{display:block;width:100%;max-width:170px;max-height:48px;object-fit:contain}
+body.social-dashboard .social-search{max-width:760px;min-height:48px;border-radius:999px;padding:5px 7px 5px 17px;box-shadow:0 8px 24px #762eff0b}
+body.social-dashboard .social-search input{font-size:14px}
+body.social-dashboard .social-search .btn{border-radius:999px;padding:11px 18px}
+body.social-dashboard .social-top-actions{gap:9px}
+body.social-dashboard .social-top-actions form .btn,
+body.social-dashboard .theme-toggle{min-height:43px;border-radius:14px}
+body.social-dashboard .social-app{
+  width:100%;max-width:1720px;margin:0 auto;padding:24px 26px 70px;
+  display:grid;grid-template-columns:205px minmax(0,800px) 270px;justify-content:center;
+  gap:22px;align-items:start;
+}
+body.social-dashboard .social-sidebar{top:96px;max-height:calc(100vh - 112px);padding:8px 3px;gap:18px}
+body.social-dashboard .social-brand{padding:10px 8px;font-size:11px;line-height:1.5}
+body.social-dashboard .social-mark{border-radius:15px;box-shadow:0 8px 20px #762eff24;color:white}
+body.social-dashboard .social-nav{gap:5px}
+body.social-dashboard .social-nav-link{min-height:46px;padding:12px 13px;border-radius:14px}
+body.social-dashboard .social-nav-link.is-current{background:linear-gradient(100deg,#eee4ff,#fce7f3);box-shadow:inset 4px 0 #762eff}
+body.social-dashboard .social-sidebar-promo{background:linear-gradient(145deg,#762eff 0%,#ff3e9d 58%,#ff8a35 100%);border-radius:22px;padding:17px;color:white;box-shadow:0 14px 28px #762eff1b}
+body.social-dashboard .social-sidebar-promo p{color:#fff5ff}
+body.social-dashboard .social-sidebar-promo a{background:#fff;color:#6721c9;border-radius:12px}
+body.social-dashboard .social-main{max-width:none;width:100%;min-width:0}
+body.social-dashboard .social-welcome{min-height:154px;padding:28px 30px;border:0;border-radius:25px;box-shadow:0 16px 35px #a13cff1c;margin-bottom:18px}
+body.social-dashboard .social-welcome h1{font-size:clamp(2rem,3vw,2.8rem);line-height:1.06}
+body.social-dashboard .social-welcome .social-eyebrow{color:#fff9ff;opacity:.92}
+body.social-dashboard .social-welcome p:not(.social-eyebrow){font-size:15px;color:#fff}
+body.social-dashboard .social-panel{border-radius:23px;border-color:#e9def9;box-shadow:0 9px 28px #38205d08}
+body.social-dashboard .stories-panel{padding:20px;border-top:4px solid #ff3e9d}
+body.social-dashboard .story-rail{display:flex;align-items:stretch;gap:13px;overflow-x:auto;padding:5px 3px 12px;scroll-snap-type:x proximity}
+body.social-dashboard .story-tile{flex:0 0 112px;min-width:112px;max-width:112px;display:flex;align-items:center;gap:8px;padding:12px 8px;border:1px solid #eee3fb;border-radius:18px;background:#fff;scroll-snap-align:start;text-align:center}
+body.social-dashboard .story-tile .story-ring{width:66px;height:66px;flex:0 0 66px;padding:3px;border-radius:50%;background:linear-gradient(135deg,#762eff,#ff3e9d,#ff8a35,#ffd43b);box-shadow:none}
+body.social-dashboard .story-tile .story-ring img,
+body.social-dashboard .story-tile .story-initial{width:100%;height:100%;border:3px solid #fff;border-radius:50%;object-fit:cover}
+body.social-dashboard .story-tile strong{max-width:100%;font-size:12px;overflow-wrap:anywhere}
+body.social-dashboard .story-tile small{font-size:10px;color:#7c708d;line-height:1.3}
+body.social-dashboard .story-create{flex:0 0 150px;width:150px;min-width:150px;max-width:150px;min-height:190px;max-height:240px;overflow:auto;align-self:stretch;display:grid;align-content:start;gap:8px;padding:9px;border:1px solid #e8d9ff;border-radius:18px;background:linear-gradient(155deg,#f4edff,#fff0f7,#fff5e8);scroll-snap-align:start}
+body.social-dashboard .story-create .upload-dropzone{min-height:115px;padding:12px;border:2px dashed #c6a7f8;border-radius:13px;background:transparent}
+body.social-dashboard .story-create .story-add{width:44px;height:44px;display:grid;place-items:center;border-radius:50%;background:linear-gradient(135deg,#762eff,#ff3e9d,#ff8a35);color:#fff;font-size:27px}
+body.social-dashboard .story-create>input[name="caption"],
+body.social-dashboard .story-create>input[name="story_music_title"],
+body.social-dashboard .story-create .inline-song-search input{width:100%;min-width:0;font-size:11px;padding:8px}
+body.social-dashboard .story-create>label:not(.upload-dropzone){font-size:10px;margin-top:2px}
+body.social-dashboard .story-create .upload-share-btn{font-size:11px;padding:9px}
+body.social-dashboard .social-shortcuts{gap:12px;margin:17px 0}
+body.social-dashboard .shortcut-card{min-height:76px;border-radius:18px;padding:14px;background:#fff;box-shadow:0 6px 20px #39205c08}
+body.social-dashboard .shortcut-card:nth-child(1) .shortcut-icon{background:#eee4ff;color:#762eff}
+body.social-dashboard .shortcut-card:nth-child(2) .shortcut-icon{background:#ffe4f1;color:#e72d87}
+body.social-dashboard .shortcut-card:nth-child(3) .shortcut-icon{background:#fff0d9;color:#d66a16}
+body.social-dashboard .composer-panel{margin-bottom:20px;border-top:4px solid #762eff}
+body.social-dashboard .composer-panel textarea{min-height:105px;padding:16px;border:1px solid #eee4fa;background:#fcfaff;border-radius:16px}
+body.social-dashboard .ig-media-picker .upload-choice{min-height:105px;border-radius:16px}
+body.social-dashboard .ig-music-picker{border-radius:16px}
+body.social-dashboard .social-feed{gap:18px}
+body.social-dashboard .social-post{border-radius:22px;background:#fff}
+body.social-dashboard .social-post-head{padding:19px 20px 9px}
+body.social-dashboard .social-post-copy{font-size:15px;line-height:1.75}
+body.social-dashboard .social-post-media{max-height:680px;background:#f7f3fc}
+body.social-dashboard .social-post-actions{padding:13px 20px}
+body.social-dashboard .reaction-form .reaction-btn{border-radius:999px;padding:8px 12px;background:#faf7ff}
+body.social-dashboard .social-reply-form input{border-radius:999px;background:#faf8ff}
+body.social-dashboard .social-rightbar{gap:16px}
+body.social-dashboard .profile-panel{border-top:4px solid #2589ff}
+body.social-dashboard .profile-avatar{width:62px;height:62px}
+body.social-dashboard .social-profile-form{padding-top:13px;border-top:1px solid #eee5fa}
+body.social-dashboard .social-profile-form input,
+body.social-dashboard .social-profile-form textarea{border-radius:12px;background:#fcfaff}
+body.social-dashboard .social-profile-form .btn{border-radius:12px}
+body.social-dashboard .promise-panel{border-top:4px solid #ffd43b}
+body.social-dashboard .social-mobile-nav{border-color:#e8def9}
+@media(max-width:1350px){
+ body.social-dashboard .social-app{grid-template-columns:190px minmax(0,850px);max-width:1120px;gap:18px;padding:20px}
+ body.social-dashboard .social-rightbar{display:none}
+}
+@media(max-width:900px){
+ body.social-dashboard .social-topbar .site-logo{flex-basis:125px;max-width:125px}
+ body.social-dashboard .social-app{grid-template-columns:minmax(0,1fr);padding:14px 14px 92px}
+ body.social-dashboard .social-sidebar{display:none}
+ body.social-dashboard .social-main{max-width:780px;margin:0 auto}
+ body.social-dashboard .social-welcome{padding:22px}
+ body.social-dashboard .social-shortcuts{grid-template-columns:repeat(3,minmax(0,1fr))}
+}
+@media(max-width:620px){
+ body.social-dashboard .social-topbar{padding:9px 11px;gap:8px}
+ body.social-dashboard .social-topbar .site-logo{flex:0 0 105px;max-width:105px}
+ body.social-dashboard .social-topbar .site-logo img{max-height:39px}
+ body.social-dashboard .social-top-actions .theme-toggle{max-width:none}
+ body.social-dashboard .social-app{padding:12px 10px 88px}
+ body.social-dashboard .social-welcome{min-height:135px;padding:20px;border-radius:20px}
+ body.social-dashboard .social-welcome h1{font-size:1.8rem}
+ body.social-dashboard .social-panel{border-radius:18px}
+ body.social-dashboard .social-shortcuts{grid-template-columns:1fr}
+ body.social-dashboard .shortcut-card{min-height:62px}
+ body.social-dashboard .story-rail{margin-right:-6px}
+ body.social-dashboard .stories-panel{padding:14px}
+ body.social-dashboard .social-post-head{padding:15px 14px 8px}
+ body.social-dashboard .social-post-copy{margin-left:14px;margin-right:14px}
+}
