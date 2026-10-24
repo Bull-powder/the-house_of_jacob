@@ -67,6 +67,11 @@ def register_social_features(app, get_db, login_required, save_upload, media_url
                     expires_at TIMESTAMP NOT NULL)""")
                 db.execute("CREATE INDEX IF NOT EXISTS idx_stories_expiry ON stories(expires_at)")
                 db.execute("CREATE INDEX IF NOT EXISTS idx_follows_followed ON follows(followed_id)")
+                story_columns = {row["name"] for row in db.execute("PRAGMA table_info(stories)").fetchall()}
+                if "music_path" not in story_columns:
+                    db.execute("ALTER TABLE stories ADD COLUMN music_path TEXT NOT NULL DEFAULT ''")
+                if "music_title" not in story_columns:
+                    db.execute("ALTER TABLE stories ADD COLUMN music_title TEXT NOT NULL DEFAULT ''")
         _SCHEMA_READY = True
 
     @app.before_request
@@ -110,14 +115,38 @@ def register_social_features(app, get_db, login_required, save_upload, media_url
             flash("Stories support PNG, JPG, GIF, WEBP, MP4, WEBM, or MOV.")
             return redirect(url_for("dashboard"))
         media_type = "video" if ext in {"mp4", "webm", "mov"} else "image"
+        music_upload = request.files.get("story_music")
+        online_preview = request.form.get("story_music_url", "").strip()
+        music_title = request.form.get("story_music_title", "").strip()[:120]
+        music_path = ""
+        if online_preview:
+            parsed = urlparse(online_preview)
+            if parsed.scheme != "https" or parsed.hostname not in {"audio-ssl.itunes.apple.com", "audio.itunes.apple.com"}:
+                flash("Choose a valid online song preview from the music catalog.")
+                return redirect(url_for("dashboard") + "#stories")
+            music_path = online_preview
+        elif music_upload and music_upload.filename:
+            music_safe = secure_filename(music_upload.filename)
+            music_ext = music_safe.rsplit(".", 1)[-1].lower() if "." in music_safe else ""
+            if music_ext not in _AUDIO_EXTENSIONS:
+                flash("Story music must be MP3, M4A, WAV, OGG, AAC, or WEBM.")
+                return redirect(url_for("dashboard") + "#stories")
+            try:
+                music_path = save_upload(music_upload, "story-music", uuid.uuid4().hex + "." + music_ext,
+                                         mimetypes.guess_type(music_safe)[0] or "audio/mpeg")
+                music_title = music_title or Path(music_safe).stem
+            except Exception:
+                app.logger.exception("Story music upload failed")
+                flash("Story music could not be uploaded.")
+                return redirect(url_for("dashboard") + "#stories")
         stored_name = uuid.uuid4().hex + "." + ext
         content_type = mimetypes.guess_type(safe)[0] or ("video/mp4" if media_type == "video" else "image/jpeg")
         try:
             media_path = save_upload(upload, "stories", stored_name, content_type)
             with get_db() as db:
                 db.execute(
-                    "INSERT INTO stories (user_id,media_path,media_type,caption,expires_at) VALUES (?,?,?,?,?)",
-                    (session["user_id"], media_path, media_type, caption, datetime.utcnow() + timedelta(hours=24))
+                    "INSERT INTO stories (user_id,media_path,media_type,caption,music_path,music_title,expires_at) VALUES (?,?,?,?,?,?,?)",
+                    (session["user_id"], media_path, media_type, caption, music_path, music_title, datetime.utcnow() + timedelta(hours=24))
                 )
             flash("Your story is live for 24 hours.")
         except Exception:
@@ -137,7 +166,7 @@ def register_social_features(app, get_db, login_required, save_upload, media_url
         if not story:
             flash("That story has expired or is no longer available.")
             return redirect(url_for("dashboard"))
-        return render_template("story.html", story=story)
+        return render_template("story.html", story=story, media_url=media_url)
 
     @social.route("/people/<int:person_id>")
     @login_required
