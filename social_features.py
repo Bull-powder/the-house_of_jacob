@@ -207,6 +207,11 @@ def register_social_features(app, get_db, login_required, save_upload, media_url
             else:
                 db.execute("INSERT INTO follows (follower_id,followed_id) VALUES (?,?)", (session["user_id"], person_id))
                 flash("You are now following this member.")
+        if request.form.get("return_to") == "feed":
+            post_id = request.form.get("post_id", "").strip()
+            if post_id.isdigit():
+                return redirect(url_for("dashboard") + "#post-" + post_id)
+            return redirect(url_for("dashboard"))
         return redirect(url_for("social.public_profile", person_id=person_id))
 
     @social.route("/posts/<int:post_id>/music", methods=["POST"])
