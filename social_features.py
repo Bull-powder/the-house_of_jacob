@@ -87,7 +87,7 @@ def register_social_features(app, get_db, login_required, save_upload, media_url
         try:
             with get_db() as db:
                 data["stories"] = [dict(row) for row in db.execute("""
-                    SELECT s.id, s.user_id, s.media_path, s.media_type, s.caption, s.created_at,
+                    SELECT s.id, s.user_id, s.media_path, s.media_type, s.caption, s.music_path, s.music_title, s.created_at,
                            u.display_name, u.profile_image
                     FROM stories s JOIN users u ON u.id=s.user_id
                     WHERE s.expires_at > CURRENT_TIMESTAMP
