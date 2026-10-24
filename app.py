@@ -192,6 +192,13 @@ def init_db():
             # Add optional media fields safely to existing conversations.
             db.execute("ALTER TABLE direct_messages ADD COLUMN IF NOT EXISTS media_path TEXT NOT NULL DEFAULT ''")
             db.execute("ALTER TABLE direct_messages ADD COLUMN IF NOT EXISTS media_type TEXT NOT NULL DEFAULT ''")
+            db.execute("ALTER TABLE direct_messages ADD COLUMN IF NOT EXISTS reply_to_id BIGINT REFERENCES direct_messages(id) ON DELETE SET NULL")
+            db.execute("""CREATE TABLE IF NOT EXISTS message_reactions (
+                message_id BIGINT NOT NULL REFERENCES direct_messages(id) ON DELETE CASCADE,
+                user_id BIGINT NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+                reaction TEXT NOT NULL,
+                created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+                PRIMARY KEY (message_id, user_id))""")
         return
 
     DB_PATH.parent.mkdir(parents=True, exist_ok=True)
@@ -233,6 +240,13 @@ def init_db():
         dm_columns = {row["name"] for row in db.execute("PRAGMA table_info(direct_messages)")}
         if "media_path" not in dm_columns: db.execute("ALTER TABLE direct_messages ADD COLUMN media_path TEXT NOT NULL DEFAULT ''")
         if "media_type" not in dm_columns: db.execute("ALTER TABLE direct_messages ADD COLUMN media_type TEXT NOT NULL DEFAULT ''")
+        if "reply_to_id" not in dm_columns: db.execute("ALTER TABLE direct_messages ADD COLUMN reply_to_id INTEGER REFERENCES direct_messages(id) ON DELETE SET NULL")
+        db.execute("""CREATE TABLE IF NOT EXISTS message_reactions (
+            message_id INTEGER NOT NULL REFERENCES direct_messages(id) ON DELETE CASCADE,
+            user_id INTEGER NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+            reaction TEXT NOT NULL,
+            created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+            PRIMARY KEY (message_id, user_id))""")
         user_columns = {row["name"] for row in db.execute("PRAGMA table_info(users)")}
         if "profile_image" not in user_columns: db.execute("ALTER TABLE users ADD COLUMN profile_image TEXT NOT NULL DEFAULT ''")
         post_columns = {row["name"] for row in db.execute("PRAGMA table_info(posts)")}
@@ -493,16 +507,21 @@ def messages():
             if selected:
                 conversation = db.execute(
                     """
-                    SELECT dm.id, dm.sender_id, dm.recipient_id, dm.body, dm.media_path, dm.media_type, dm.created_at,
-                           sender.display_name AS sender_name
+                    SELECT dm.id, dm.sender_id, dm.recipient_id, dm.body, dm.media_path, dm.media_type, dm.reply_to_id, dm.created_at,
+                           sender.display_name AS sender_name, parent.body AS reply_to_body,
+                           (SELECT reaction FROM message_reactions mr WHERE mr.message_id=dm.id AND mr.user_id=?) AS my_reaction,
+                           (SELECT COUNT(*) FROM message_reactions mr WHERE mr.message_id=dm.id AND mr.reaction='❤️') AS heart_count,
+                           (SELECT COUNT(*) FROM message_reactions mr WHERE mr.message_id=dm.id AND mr.reaction='😂') AS laugh_count,
+                           (SELECT COUNT(*) FROM message_reactions mr WHERE mr.message_id=dm.id AND mr.reaction='👍') AS like_count
                     FROM direct_messages dm
                     JOIN users sender ON sender.id = dm.sender_id
+                    LEFT JOIN direct_messages parent ON parent.id=dm.reply_to_id
                     WHERE (dm.sender_id = ? AND dm.recipient_id = ?)
                        OR (dm.sender_id = ? AND dm.recipient_id = ?)
                     ORDER BY dm.created_at ASC, dm.id ASC
                     LIMIT 300
                     """,
-                    (session["user_id"], selected_id, selected_id, session["user_id"])
+                    (session["user_id"], session["user_id"], selected_id, selected_id, session["user_id"])
                 ).fetchall()
     return render_template("messages.html", people=people, selected=selected, conversation=conversation)
 
@@ -513,6 +532,7 @@ def send_message():
     recipient_id = request.form.get("recipient_id", type=int)
     body = request.form.get("body", "").strip()
     upload = request.files.get("message_media")
+    reply_to_id = request.form.get("reply_to_id", type=int)
     if not recipient_id or (not body and (not upload or not upload.filename)):
         flash("Write a message or attach a photo/video.")
         return redirect(url_for("messages", to=recipient_id) if recipient_id else url_for("messages"))
@@ -540,11 +560,44 @@ def send_message():
         if not recipient or recipient_id == session["user_id"]:
             flash("That member is not available.")
             return redirect(url_for("messages"))
+        if reply_to_id:
+            parent = db.execute("""SELECT id FROM direct_messages
+                WHERE id=? AND ((sender_id=? AND recipient_id=?) OR (sender_id=? AND recipient_id=?))""",
+                (reply_to_id, session["user_id"], recipient_id, recipient_id, session["user_id"])).fetchone()
+            if not parent:
+                flash("That message can no longer be replied to.")
+                return redirect(url_for("messages", to=recipient_id))
         db.execute(
-            "INSERT INTO direct_messages (sender_id, recipient_id, body, media_path, media_type) VALUES (?, ?, ?, ?, ?)",
-            (session["user_id"], recipient_id, body, media_path, media_type)
+            "INSERT INTO direct_messages (sender_id, recipient_id, body, media_path, media_type, reply_to_id) VALUES (?, ?, ?, ?, ?, ?)",
+            (session["user_id"], recipient_id, body, media_path, media_type, reply_to_id)
         )
     return redirect(url_for("messages", to=recipient_id))
+
+
+@app.route("/messages/<int:message_id>/react", methods=["POST"])
+@login_required
+def react_to_message(message_id):
+    recipient_id = request.form.get("recipient_id", type=int)
+    reaction = request.form.get("reaction", "")
+    if reaction not in {"❤️", "😂", "👍", "🙌"}:
+        flash("Choose a supported message reaction.")
+        return redirect(url_for("messages", to=recipient_id) if recipient_id else url_for("messages"))
+    with get_db() as db:
+        message = db.execute("""SELECT id FROM direct_messages
+            WHERE id=? AND ((sender_id=? AND recipient_id=?) OR (sender_id=? AND recipient_id=?))""",
+            (message_id, session["user_id"], recipient_id, recipient_id, session["user_id"])).fetchone()
+        if not recipient_id or not message:
+            flash("That message is not available in this conversation.")
+            return redirect(url_for("messages"))
+        current = db.execute("SELECT reaction FROM message_reactions WHERE message_id=? AND user_id=?",
+                             (message_id, session["user_id"])).fetchone()
+        if current and current["reaction"] == reaction:
+            db.execute("DELETE FROM message_reactions WHERE message_id=? AND user_id=?", (message_id, session["user_id"]))
+        else:
+            db.execute("""INSERT INTO message_reactions(message_id,user_id,reaction) VALUES(?,?,?)
+                ON CONFLICT(message_id,user_id) DO UPDATE SET reaction=excluded.reaction""",
+                (message_id, session["user_id"], reaction))
+    return redirect(url_for("messages", to=recipient_id) + "#message-" + str(message_id))
 
 
 @app.route("/calls")
