@@ -43,6 +43,8 @@ def register_social_features(app, get_db, login_required, save_upload, media_url
                     expires_at TIMESTAMP NOT NULL)""")
                 db.execute("CREATE INDEX IF NOT EXISTS idx_stories_expiry ON stories(expires_at)")
                 db.execute("CREATE INDEX IF NOT EXISTS idx_follows_followed ON follows(followed_id)")
+                db.execute("""ALTER TABLE stories ADD COLUMN IF NOT EXISTS music_path TEXT NOT NULL DEFAULT ''""")
+                db.execute("""ALTER TABLE stories ADD COLUMN IF NOT EXISTS music_title TEXT NOT NULL DEFAULT ''""")
             else:
                 columns = {row["name"] for row in db.execute("PRAGMA table_info(posts)").fetchall()}
                 if "music_path" not in columns:
@@ -294,5 +296,50 @@ def register_social_features(app, get_db, login_required, save_upload, media_url
         with get_db() as db:
             user = db.execute("SELECT id,display_name,email,bio,interests,profile_image,created_at FROM users WHERE id=?", (session["user_id"],)).fetchone()
         return render_template("profile_settings.html", user=user, media_url=media_url)
+
+
+    @social.route("/community-rules")
+    @login_required
+    def community_rules():
+        return render_template("community_rules.html")
+
+    @social.route("/verification", methods=["GET", "POST"])
+    @login_required
+    def verification_request():
+        with get_db() as db:
+            if is_postgres:
+                db.execute("""CREATE TABLE IF NOT EXISTS verification_requests (
+                    id BIGSERIAL PRIMARY KEY, user_id BIGINT NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+                    public_links TEXT NOT NULL, reason TEXT NOT NULL, status TEXT NOT NULL DEFAULT 'pending',
+                    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP, reviewed_at TIMESTAMP)""")
+            else:
+                db.execute("""CREATE TABLE IF NOT EXISTS verification_requests (
+                    id INTEGER PRIMARY KEY AUTOINCREMENT, user_id INTEGER NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+                    public_links TEXT NOT NULL, reason TEXT NOT NULL, status TEXT NOT NULL DEFAULT 'pending',
+                    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP, reviewed_at TIMESTAMP)""")
+            current = db.execute("SELECT id,status,created_at FROM verification_requests WHERE user_id=? ORDER BY id DESC LIMIT 1",
+                                 (session["user_id"],)).fetchone()
+            if request.method == "POST":
+                if current and current["status"] == "pending":
+                    flash("Your verification request is already waiting for review.")
+                    return redirect(url_for("social.verification_request"))
+                public_links = request.form.get("public_links", "").strip()[:1200]
+                reason = request.form.get("reason", "").strip()[:1000]
+                if not public_links or not reason:
+                    flash("Add public links and explain why the account should be verified.")
+                    return redirect(url_for("social.verification_request"))
+                db.execute("INSERT INTO verification_requests (user_id,public_links,reason,status) VALUES (?,?,?,'pending')",
+                           (session["user_id"], public_links, reason))
+                flash("Verification request submitted. A moderator must review it before any badge is shown.")
+                return redirect(url_for("social.verification_request"))
+        return render_template("verification.html", current=current)
+
+    @social.route("/live")
+    @login_required
+    def live_access():
+        with get_db() as db:
+            row = db.execute("SELECT COUNT(*) AS n FROM follows WHERE followed_id=?", (session["user_id"],)).fetchone()
+        eligible = row["n"] >= 1000
+        return render_template("live_access.html", eligible=eligible, followers=row["n"])
 
     app.register_blueprint(social)
