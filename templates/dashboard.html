@@ -42,7 +42,7 @@
   <main class="social-main">
     {% with messages = get_flashed_messages() %}{% for message in messages %}<p class="flash">{{ message }}</p>{% endfor %}{% endwith %}
     <section class="social-welcome"><div><p class="social-eyebrow">YOUR COMMUNITY, YOUR SPACE</p><h1>Welcome, {{ user["display_name"] }}.</h1><p>More than a social app. It’s a community.</p></div><span class="welcome-spark" aria-hidden="true">✦</span></section>
-    <section class="social-panel stories-panel" id="stories"><div class="social-section-heading"><div><p class="social-eyebrow">MOMENTS THAT MATTER</p><h2>Stories</h2></div><span class="feed-label">Disappear after 24 hours</span></div><div class="story-rail">{% for story in stories %}<a class="story-tile" href="{{ url_for('social.view_story', story_id=story['id']) }}"><span class="story-ring">{% if story['profile_image'] %}<img src="{{ media_url(story['profile_image']) }}" alt="">{% else %}<span class="story-initial">{{ story['display_name'][:1]|upper }}</span>{% endif %}</span><strong>{{ story['display_name'] }}</strong><small>{{ story['caption'] or "View story" }}</small></a>{% endfor %}<form class="story-create" method="POST" action="{{ url_for('social.create_story') }}" enctype="multipart/form-data"><label for="story-media" class="upload-dropzone"><span class="story-add">＋</span><strong>Choose a story</strong><small>Photo or video · disappears in 24 hours</small></label><input id="story-media" class="file-input" type="file" name="story_media" accept="image/png,image/jpeg,image/gif,image/webp,video/mp4,video/webm,video/quicktime" required><div id="story-upload-preview" class="upload-preview" hidden></div><input name="caption" maxlength="180" placeholder="Add a caption…" aria-label="Story caption"><label for="story-music-file">Add music (optional)</label><input id="story-music-file" class="file-input" type="file" name="story_music" accept="audio/mpeg,audio/mp4,audio/wav,audio/ogg,audio/aac,audio/webm"><input name="story_music_title" maxlength="120" placeholder="Song title (optional)" aria-label="Story song title"><input name="story_music_url" type="url" placeholder="Or paste an Apple song preview URL" aria-label="Online song preview URL"><button class="btn btn-primary upload-share-btn" type="submit">Share story with music ↗</button></form></div></section>
+    <section class="social-panel stories-panel" id="stories"><div class="social-section-heading"><div><p class="social-eyebrow">MOMENTS THAT MATTER</p><h2>Stories</h2></div><span class="feed-label">Disappear after 24 hours</span></div><div class="story-rail">{% for story in stories %}<a class="story-tile" href="{{ url_for('social.view_story', story_id=story['id']) }}"><span class="story-ring">{% if story['profile_image'] %}<img src="{{ media_url(story['profile_image']) }}" alt="">{% else %}<span class="story-initial">{{ story['display_name'][:1]|upper }}</span>{% endif %}</span><strong>{{ story['display_name'] }}</strong><small>{{ story['caption'] or "View story" }}</small></a>{% endfor %}<form class="story-create" method="POST" action="{{ url_for('social.create_story') }}" enctype="multipart/form-data"><label for="story-media" class="upload-dropzone"><span class="story-add">＋</span><strong>Choose a story</strong><small>Photo or video · disappears in 24 hours</small></label><input id="story-media" class="file-input" type="file" name="story_media" accept="image/png,image/jpeg,image/gif,image/webp,video/mp4,video/webm,video/quicktime" required><div id="story-upload-preview" class="upload-preview" hidden></div><input name="caption" maxlength="180" placeholder="Add a caption…" aria-label="Story caption"><label for="story-music-file">Add music (optional)</label><input id="story-music-file" class="file-input" type="file" name="story_music" accept="audio/mpeg,audio/mp4,audio/wav,audio/ogg,audio/aac,audio/webm"><input name="story_music_title" maxlength="120" placeholder="Song title (optional)" aria-label="Story song title"><label for="story-song-search">Search songs online</label><div class="inline-song-search"><input id="story-song-search" type="search" placeholder="Song title or artist"><button class="btn btn-quiet" type="button" data-song-search="story">Search</button></div><div id="story-song-results" class="inline-song-results" aria-live="polite"></div><input name="story_music_url" type="hidden" value=""><button class="btn btn-primary upload-share-btn" type="submit">Share story with music ↗</button></form></div></section>
     <section class="social-shortcuts" aria-label="Community shortcuts">
       <a class="shortcut-card" href="#composer"><span class="shortcut-icon">＋</span><span><b>Share a moment</b><small>Post an update or photo</small></span></a>
       <a class="shortcut-card" href="{{ url_for('messages') }}"><span class="shortcut-icon">✉</span><span><b>Stay connected</b><small>Open your messages</small></span></a>
@@ -54,7 +54,7 @@
       <form method="POST" action="{{ url_for('create_post') }}" enctype="multipart/form-data" class="ig-upload-form">
         <label class="ig-caption-label" for="content">Write a caption</label>
         <textarea id="content" name="content" rows="3" maxlength="2000" placeholder="What would you like to share?"></textarea>
-        <div class="ig-media-picker"><label for="post-media" class="upload-choice"><span class="ig-picker-icon">▧</span><strong>Choose photo or video</strong><small>Preview it before sharing</small></label><input id="post-media" class="file-input" type="file" name="media" accept="image/png,image/jpeg,image/gif,image/webp,video/mp4,video/webm,video/quicktime"><div id="post-upload-preview" class="upload-preview" hidden></div></div><div class="ig-music-picker"><p><b>♫ Add music to this post</b></p><label for="music-file">Upload audio from your device</label><input id="music-file" class="file-input" type="file" name="music_file" accept="audio/mpeg,audio/mp4,audio/wav,audio/ogg,audio/aac,audio/webm"><input name="music_title" maxlength="120" placeholder="Song title (optional)" aria-label="Song title"><label for="music-url">Or add an online song preview</label><input id="music-url" type="url" name="music_url" placeholder="Paste an Apple preview URL from online music search"><p class="muted">Find a preview using <a href="{{ url_for('social.search_online_music', post_id=1) }}">online music search</a> after publishing, or use the preview URL here.</p></div>
+        <div class="ig-media-picker"><label for="post-media" class="upload-choice"><span class="ig-picker-icon">▧</span><strong>Choose photo or video</strong><small>Preview it before sharing</small></label><input id="post-media" class="file-input" type="file" name="media" accept="image/png,image/jpeg,image/gif,image/webp,video/mp4,video/webm,video/quicktime"><div id="post-upload-preview" class="upload-preview" hidden></div></div><div class="ig-music-picker"><p><b>♫ Add music to this post</b></p><label for="music-file">Upload audio from your device</label><input id="music-file" class="file-input" type="file" name="music_file" accept="audio/mpeg,audio/mp4,audio/wav,audio/ogg,audio/aac,audio/webm"><input name="music_title" maxlength="120" placeholder="Song title (optional)" aria-label="Song title"><label for="post-song-search">Or search songs online</label><div class="inline-song-search"><input id="post-song-search" type="search" placeholder="Song title or artist"><button class="btn btn-quiet" type="button" data-song-search="post">Search</button></div><div id="post-song-results" class="inline-song-results" aria-live="polite"></div><input id="music-url" type="hidden" name="music_url" value=""></div>
         <div class="composer-bottom"><div class="upload-wrap"><small class="muted">Photos and videos up to 50 MB</small></div><div class="composer-submit"><small class="muted"><span data-count-for="content">0 / 2000</span> characters</small><button type="submit" class="btn btn-primary upload-share-btn">Share post ↗</button></div></div>
       </form>
     </section>
@@ -101,5 +101,35 @@
  }
  setupPreview('post-media','post-upload-preview');
  setupPreview('story-media','story-upload-preview');
+ function bindSongSearch(kind){
+  const button=document.querySelector('[data-song-search="'+kind+'"]');
+  if(!button)return;
+  const query=document.getElementById(kind==='post'?'post-song-search':'story-song-search');
+  const results=document.getElementById(kind==='post'?'post-song-results':'story-song-results');
+  const urlField=document.querySelector('input[name="'+(kind==='post'?'music_url':'story_music_url')+'"]');
+  const titleField=document.querySelector('input[name="'+(kind==='post'?'music_title':'story_music_title')+'"]');
+  button.addEventListener('click',async function(){
+   const term=query.value.trim();
+   if(!term){results.textContent='Enter a song title or artist first.';return;}
+   results.textContent='Searching song previews…';button.disabled=true;
+   try{
+    const response=await fetch('https://itunes.apple.com/search?'+new URLSearchParams({term:term,media:'music',entity:'song',limit:'10',country:'KE'}));
+    if(!response.ok)throw new Error('Search unavailable');
+    const data=await response.json();results.replaceChildren();
+    const tracks=(data.results||[]).filter(track=>track.previewUrl&&/^https:\/\/(audio-ssl|audio)\.itunes\.apple\.com\//.test(track.previewUrl));
+    if(!tracks.length){results.textContent='No previews found. Try another artist or upload audio from your device.';return;}
+    tracks.forEach(track=>{
+     const item=document.createElement('div');item.className='inline-song-result';
+     const info=document.createElement('span');info.textContent=track.trackName+' — '+track.artistName;
+     const preview=document.createElement('audio');preview.controls=true;preview.preload='none';preview.src=track.previewUrl;
+     const choose=document.createElement('button');choose.type='button';choose.className='btn btn-primary';choose.textContent='Use this song';
+     choose.addEventListener('click',()=>{urlField.value=track.previewUrl;titleField.value=track.trackName+' — '+track.artistName;results.querySelectorAll('.inline-song-result').forEach(el=>el.classList.remove('selected-song'));item.classList.add('selected-song');});
+     item.append(info,preview,choose);results.append(item);
+    });
+   }catch(error){results.textContent='Online song search is temporarily unavailable. You can upload an audio file instead.';}
+   finally{button.disabled=false;}
+  });
+ }
+ bindSongSearch('post');bindSongSearch('story');
 })();
 </script></body></html>
