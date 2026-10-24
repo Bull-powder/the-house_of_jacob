@@ -371,3 +371,94 @@ html[data-theme="dark"] .social-dashboard .social-search > span {
 .message-reply-context[hidden]{display:none}
 .message-reply-context span{overflow-wrap:anywhere}
 .message-reply-context button{border:0;background:transparent;color:#5b3978;cursor:pointer;font-weight:900}
+
+
+/* Rainbow social experience — feed, stories, profiles and chat polish */
+html[data-theme="light"] body.social-dashboard{
+  --bg:#fbf9ff;--panel:#fff;--panel2:#f3edff;--text:#29213d;--muted:#766b89;
+  --line:#e6dcfb;--gold:#762eff;--gold2:#5420bd;--shadow:0 14px 38px #48208d0d;
+  background:radial-gradient(ellipse at 5% 0%,#eee5ff 0,transparent 32%),radial-gradient(ellipse at 98% 7%,#ffe6f2 0,transparent 28%),radial-gradient(ellipse at 50% 100%,#fff4d5 0,transparent 30%),var(--bg);
+}
+.social-dashboard .social-topbar{background:#ffffffed;box-shadow:0 4px 20px #4e278508}
+.social-dashboard .social-topbar .site-logo img{max-height:47px;width:auto;max-width:220px;object-fit:contain}
+.social-dashboard .social-search{border-radius:999px;background:#fbf9ff}
+.social-dashboard .top-square{border-radius:50%;transition:transform .18s,background .18s}
+.social-dashboard .top-square:hover{transform:translateY(-2px);background:#ffe5f1}
+.social-dashboard .social-welcome{position:relative;overflow:hidden;isolation:isolate;min-height:150px;border-radius:26px;background:linear-gradient(115deg,#762eff 0%,#a52dff 27%,#ff3e9d 56%,#ff8a35 79%,#ffd43b 100%)}
+.social-dashboard .social-welcome:after{content:"";position:absolute;z-index:-1;width:210px;height:210px;right:-48px;top:-88px;border:28px solid #ffffff20;border-radius:50%}
+.social-dashboard .social-panel{border-radius:22px}
+.social-dashboard .stories-panel{border-top:4px solid #ff3e9d}
+.social-dashboard .story-tile{transition:transform .18s ease,filter .18s ease}
+.social-dashboard .story-tile:hover{transform:translateY(-3px);filter:saturate(1.1)}
+.social-dashboard .story-ring{box-shadow:0 0 0 3px #fff,0 0 0 6px #ff3e9d,0 6px 16px #762eff18}
+.social-dashboard .story-create{border:1px dashed #c9b5f5;border-radius:18px;background:linear-gradient(145deg,#f5efff,#fff0f7,#fff8e8);padding:14px}
+.social-dashboard .composer-panel{border-top:4px solid #762eff}
+.social-dashboard .ig-media-picker,.social-dashboard .ig-music-picker{border-radius:18px}
+.social-dashboard .upload-share-btn{background:linear-gradient(105deg,#762eff,#d52cbd 45%,#ff3e9d 72%,#ff8a35);color:#fff;border:0;box-shadow:0 7px 18px #762eff20}
+.social-dashboard .upload-share-btn:hover{filter:brightness(1.04)}
+.social-dashboard .social-post{border:1px solid #e8defb;border-top:4px solid #762eff;box-shadow:0 10px 28px #4d1ca50a}
+.social-dashboard .social-post:nth-of-type(3n+1){border-top-color:#ff3e9d}
+.social-dashboard .social-post:nth-of-type(3n+2){border-top-color:#ff8a35}
+.social-dashboard .social-post:nth-of-type(3n){border-top-color:#2589ff}
+.social-dashboard .social-post-media{max-height:680px;object-fit:contain}
+.social-dashboard .social-post-actions{background:linear-gradient(90deg,#f4edff,#fff0f7 55%,#fff8e8)}
+.social-dashboard .public-profile-hero{padding:0;overflow:hidden;border:1px solid #e5d9ff}
+.social-dashboard .public-profile-cover{height:170px;background:linear-gradient(110deg,#762eff,#ff3e9d 45%,#ff8a35 75%,#ffd43b);position:relative;overflow:hidden}
+.social-dashboard .public-profile-cover:after{content:"";position:absolute;right:8%;top:-75px;width:250px;height:250px;border:35px solid #ffffff30;border-radius:50%}
+.social-dashboard .public-profile-content{padding:0 24px 22px;display:flex;align-items:center;gap:18px;flex-wrap:wrap}
+.social-dashboard .public-avatar{width:104px;height:104px;margin-top:-48px;border:5px solid #fff;box-shadow:0 5px 18px #27114420;font-size:38px}
+.social-dashboard .public-profile-title{flex:1;min-width:180px}
+.social-dashboard .public-profile-title h1{margin:0;font-size:clamp(1.4rem,3vw,2rem);color:var(--text)}
+.social-dashboard .public-profile-title>p:not(.social-eyebrow){margin:5px 0 10px}
+.social-dashboard .profile-counts{display:flex;gap:18px;flex-wrap:wrap;font-size:12px;color:var(--muted)}
+.social-dashboard .profile-counts strong{color:#762eff}
+.social-dashboard .public-profile-actions{display:flex;gap:8px;flex-wrap:wrap}
+.social-dashboard .public-interests{padding:14px 24px;background:linear-gradient(90deg,#f2ebff,#fff0f7,#fff8e8);border-top:1px solid #eee2ff}
+.social-dashboard .public-interests p{margin:3px 0 0}
+.social-dashboard .public-post-grid{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:14px}
+.social-dashboard .public-post{padding:0;overflow:hidden;border-top:4px solid #762eff}
+.social-dashboard .public-post:nth-child(3n+2){border-top-color:#ff3e9d}
+.social-dashboard .public-post:nth-child(3n){border-top-color:#2589ff}
+.social-dashboard .public-post>p,.social-dashboard .public-post>small,.social-dashboard .public-post .post-music{margin:12px}
+.social-dashboard .public-post>img,.social-dashboard .public-post>video{display:block;width:100%;max-height:360px;object-fit:cover;background:#f4efff}
+body.social-dashboard .messages-page{width:min(1450px,96vw);padding-top:28px}
+body.social-dashboard .messages-heading{display:flex;align-items:center;justify-content:space-between;gap:14px;flex-wrap:wrap;margin-bottom:18px;padding:22px 24px;border-radius:22px;color:#fff;background:linear-gradient(110deg,#762eff,#bd2cff 35%,#ff3e9d 65%,#ff8a35);box-shadow:0 12px 28px #762eff1f}
+body.social-dashboard .messages-heading h1,body.social-dashboard .messages-heading p{color:#fff;margin:0}
+body.social-dashboard .messages-heading .social-eyebrow{color:#fff2b6}
+body.social-dashboard .messages-heading .btn{background:#fff;color:#6326c8;border:0}
+body.social-dashboard .messages-layout{grid-template-columns:minmax(230px,.72fr) minmax(0,1.5fr);gap:18px}
+body.social-dashboard .messages-people-panel,body.social-dashboard .messages-chat-panel{border-radius:22px;border:1px solid #e4d8fb;background:#fff}
+body.social-dashboard .messages-people-panel{border-top:4px solid #2589ff}
+body.social-dashboard .messages-chat-panel{border-top:4px solid #762eff;box-shadow:0 15px 40px #48208d10}
+body.social-dashboard .messages-people-panel .member-row{border-color:#eee5ff;background:#fcfaff;border-radius:15px}
+body.social-dashboard .messages-people-panel .member-row:hover{background:#fff0f7;border-color:#ff9bc9}
+body.social-dashboard .messages-chat-panel .chat-title{background:#fff;border-radius:14px}
+body.social-dashboard .messages-history{background:linear-gradient(180deg,#fbf8ff,#fff 45%,#fff8fc);border-radius:16px;padding:16px}
+body.social-dashboard .messages-history .bubble{border:1px solid #e6dcfb;background:#fff;box-shadow:0 4px 12px #40206508}
+body.social-dashboard .messages-history .mine .bubble{border:1px solid #e5c5ff;background:linear-gradient(140deg,#eee5ff,#ffe5f1 70%,#fff0df)}
+body.social-dashboard .message-reaction-form button.is-active{background:#eee5ff;border-color:#762eff;color:#5420bd}
+body.social-dashboard .messages-compose{padding:15px;border:1px solid #e6dcfb;border-radius:18px;background:#fff}
+body.social-dashboard .messages-compose textarea{background:#fbf9ff;border:1px solid #e6dcfb}
+body.social-dashboard .message-attach-btn{background:linear-gradient(100deg,#eee5ff,#ffe5f1);border-color:#e0d0ff;color:#6326c8}
+body.social-dashboard .story-view-page{background:radial-gradient(circle at 12% 10%,#762eff45,transparent 34%),radial-gradient(circle at 90% 80%,#ff3e9d45,transparent 35%),radial-gradient(circle at 50% 0%,#ff8a3533,transparent 35%),#170e24}
+body.social-dashboard .story-viewer{border-radius:24px;border:3px solid transparent;background:linear-gradient(#fff,#fff) padding-box,linear-gradient(130deg,#762eff,#ff3e9d,#ff8a35,#ffd43b,#2589ff) border-box}
+@media(max-width:850px){
+ .social-dashboard .public-post-grid{grid-template-columns:repeat(2,minmax(0,1fr))}
+ body.social-dashboard .messages-layout{grid-template-columns:1fr}
+ body.social-dashboard .messages-chat-panel{min-height:480px}
+ body.social-dashboard .messages-people-panel .people-list{display:flex;gap:8px;overflow-x:auto;padding-bottom:6px}
+ body.social-dashboard .messages-people-panel .member-row{min-width:220px}
+}
+@media(max-width:560px){
+ .social-dashboard .social-topbar .site-logo img{max-width:165px;max-height:40px}
+ .social-dashboard .public-profile-cover{height:125px}
+ .social-dashboard .public-profile-content{padding:0 15px 17px;gap:12px}
+ .social-dashboard .public-avatar{width:82px;height:82px;margin-top:-36px}
+ .social-dashboard .public-interests{padding:12px 15px}
+ .social-dashboard .public-post-grid{grid-template-columns:1fr}
+ body.social-dashboard .messages-page{width:94vw;padding-top:15px}
+ body.social-dashboard .messages-heading{padding:17px}
+ body.social-dashboard .messages-chat-panel{padding:12px}
+ body.social-dashboard .messages-history{padding:10px}
+ body.social-dashboard .messages-history .bubble{max-width:95%}
+}
