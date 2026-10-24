@@ -368,12 +368,154 @@ def register_social_features(app, get_db, login_required, save_upload, media_url
                 return redirect(url_for("social.verification_request"))
         return render_template("verification.html", current=current)
 
-    @social.route("/live")
+    def livekit_configured():
+        return all(os.environ.get(key, "").strip() for key in ("LIVEKIT_URL", "LIVEKIT_API_KEY", "LIVEKIT_API_SECRET"))
+
+    def livekit_api_call(operation):
+        from livekit import api
+        async def run():
+            api_url = os.environ["LIVEKIT_URL"].strip().replace("wss://", "https://", 1).replace("ws://", "http://", 1)
+            client = api.LiveKitAPI(api_url,
+                api_key=os.environ["LIVEKIT_API_KEY"].strip(),
+                api_secret=os.environ["LIVEKIT_API_SECRET"].strip())
+            try:
+                return await operation(client)
+            finally:
+                await client.aclose()
+        import asyncio
+        return asyncio.run(run())
+
+    def list_live_rooms():
+        if not livekit_configured():
+            return []
+        from livekit import api
+        async def operation(client):
+            result = await client.room.list_rooms(api.ListRoomsRequest())
+            return result.rooms
+        rooms = livekit_api_call(operation)
+        now = datetime.utcnow().timestamp()
+        active = []
+        for room in rooms:
+            if not room.name.startswith("HOJ-LIVE-"):
+                continue
+            try:
+                metadata = json.loads(room.metadata or "{}")
+                started_at = float(metadata.get("started_at", 0))
+            except (ValueError, TypeError):
+                metadata, started_at = {}, 0
+            if not started_at or now - started_at >= 1800:
+                async def remove_expired(client, room_name=room.name):
+                    return await client.room.delete_room(api.DeleteRoomRequest(room=room_name))
+                livekit_api_call(remove_expired)
+                continue
+            active.append({"room_name": room.name, "host_name": metadata.get("host_name", "House of Jacob member"),
+                "started_at": started_at, "remaining_seconds": max(0, int(1800 - (now - started_at)))})
+        return active
+
+    def get_live_room(room_name):
+        if not livekit_configured() or not room_name or not room_name.startswith("HOJ-LIVE-"):
+            return None
+        from livekit import api
+        async def operation(client):
+            result = await client.room.list_rooms(api.ListRoomsRequest(names=[room_name]))
+            return result.rooms[0] if result.rooms else None
+        room = livekit_api_call(operation)
+        if not room:
+            return None
+        try:
+            metadata = json.loads(room.metadata or "{}")
+            started_at = float(metadata.get("started_at", 0))
+        except (ValueError, TypeError):
+            return None
+        if not started_at or datetime.utcnow().timestamp() - started_at >= 1800:
+            async def remove_expired(client):
+                return await client.room.delete_room(api.DeleteRoomRequest(room=room_name))
+            livekit_api_call(remove_expired)
+            return None
+        return {"room": room, "metadata": metadata, "started_at": started_at}
+
+    @social.route("/live", methods=["GET"])
     @login_required
     def live_access():
+        room_name = request.args.get("room", "").strip()
+        live_room = get_live_room(room_name) if room_name else None
+        if room_name and not live_room:
+            flash("That live broadcast has ended or expired.")
+            return redirect(url_for("social.live_access"))
         with get_db() as db:
-            row = db.execute("SELECT COUNT(*) AS n FROM follows WHERE followed_id=?", (session["user_id"],)).fetchone()
-        eligible = row["n"] >= 1000
-        return render_template("live_access.html", eligible=eligible, followers=row["n"])
+            user = db.execute("SELECT id,display_name,email FROM users WHERE id=?", (session["user_id"],)).fetchone()
+        return render_template("live_access.html", configured=livekit_configured(), live_rooms=list_live_rooms(),
+            live_room=live_room, room_name=room_name,
+            is_host=bool(live_room and int(live_room["metadata"].get("host_id", -1)) == int(session["user_id"])),
+            viewer_name=(user["display_name"] or user["email"] or "House of Jacob member"))
+
+    @social.route("/live/start", methods=["POST"])
+    @login_required
+    def live_start():
+        if not livekit_configured():
+            flash("Live video is not configured yet. Please contact the site administrator.")
+            return redirect(url_for("social.live_access"))
+        try:
+            room_name = f"HOJ-LIVE-{session['user_id']}"
+            existing = next((r for r in list_live_rooms() if r["room_name"] == room_name), None)
+            if existing:
+                return redirect(url_for("social.live_access", room=room_name))
+            from livekit import api
+            with get_db() as db:
+                user = db.execute("SELECT display_name,email FROM users WHERE id=?", (session["user_id"],)).fetchone()
+            host_name = (user["display_name"] or user["email"] or "House of Jacob member")[:80]
+            metadata = json.dumps({"host_id": int(session["user_id"]), "host_name": host_name,
+                "started_at": datetime.utcnow().timestamp()})
+            async def operation(client):
+                return await client.room.create_room(api.CreateRoomRequest(
+                    name=room_name, empty_timeout=60, max_participants=100, metadata=metadata))
+            livekit_api_call(operation)
+            return redirect(url_for("social.live_access", room=room_name))
+        except Exception:
+            app.logger.exception("Could not start LiveKit broadcast")
+            flash("House of Jacob Live could not start right now. Please try again shortly.")
+            return redirect(url_for("social.live_access"))
+
+    @social.route("/live/token", methods=["POST"])
+    @login_required
+    def live_token():
+        if not livekit_configured():
+            return {"error": "Live video is not configured."}, 503
+        payload = request.get_json(silent=True) or {}
+        room_name = str(payload.get("room_name", "")).strip()
+        live = get_live_room(room_name)
+        if not live:
+            return {"error": "This broadcast has ended."}, 410
+        is_host = int(live["metadata"].get("host_id", -1)) == int(session["user_id"])
+        from livekit import api
+        with get_db() as db:
+            user = db.execute("SELECT display_name,email FROM users WHERE id=?", (session["user_id"],)).fetchone()
+        identity = f"hoj-user-{session['user_id']}"
+        name = (user["display_name"] or user["email"] or "House of Jacob member")[:80]
+        token = api.AccessToken(os.environ["LIVEKIT_API_KEY"].strip(), os.environ["LIVEKIT_API_SECRET"].strip()
+            ).with_identity(identity).with_name(name).with_ttl(timedelta(minutes=31)).with_grants(
+                api.VideoGrants(room_join=True, room=room_name, can_publish=is_host, can_subscribe=True)).to_jwt()
+        return {"server_url": os.environ["LIVEKIT_URL"].strip(), "participant_token": token, "is_host": is_host,
+            "remaining_seconds": max(0, int(1800 - (datetime.utcnow().timestamp() - live["started_at"])))}
+
+    @social.route("/live/end", methods=["POST"])
+    @login_required
+    def live_end():
+        payload = request.get_json(silent=True) or {}
+        room_name = str(payload.get("room_name", "")).strip()
+        live = get_live_room(room_name)
+        if not live:
+            return {"ok": True}
+        if int(live["metadata"].get("host_id", -1)) != int(session["user_id"]):
+            return {"error": "Only the broadcaster can end this live session."}, 403
+        from livekit import api
+        async def operation(client):
+            return await client.room.delete_room(api.DeleteRoomRequest(room=room_name))
+        try:
+            livekit_api_call(operation)
+            return {"ok": True}
+        except Exception:
+            app.logger.exception("Could not end LiveKit broadcast")
+            return {"error": "Could not end the broadcast. Please retry."}, 502
 
     app.register_blueprint(social)
