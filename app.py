@@ -450,6 +450,26 @@ def update_profile():
 
 
 
+@app.route("/posts/<int:post_id>/delete", methods=["POST"])
+@login_required
+def delete_post(post_id):
+    """Allow members to delete only their own posts."""
+    with get_db() as db:
+        post = db.execute(
+            "SELECT id FROM posts WHERE id=? AND user_id=?",
+            (post_id, session["user_id"])
+        ).fetchone()
+        if not post:
+            flash("Post not found, or you do not have permission to delete it.")
+            return redirect(url_for("dashboard"))
+        # Explicitly remove dependent records for compatibility with existing DBs.
+        db.execute("DELETE FROM comments WHERE post_id=?", (post_id,))
+        db.execute("DELETE FROM reactions WHERE post_id=?", (post_id,))
+        db.execute("DELETE FROM posts WHERE id=? AND user_id=?", (post_id, session["user_id"]))
+    flash("Your post was deleted.")
+    return redirect(url_for("dashboard"))
+
+
 @app.route("/posts/<int:post_id>/comment", methods=["POST"])
 @login_required
 def add_comment(post_id):
